@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Keuangan Madrasah Miftahul Ulum A-22",
+  "description": "Aplikasi Manajemen Keuangan Madrasah, RAPBM 1446-1447 H, Slip Gaji Bisyaroh Guru, Tanggal Hijriyah, dan Laporan PDF Real-Time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
