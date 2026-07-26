@@ -1,226 +1,382 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { initialMadrasahInfo, initialPayrolls, initialRAPBMData, initialTeachers, initialTransactions } from './src/data/initialData';
-import { MadrasahInfo, PayrollRecord, RAPBMItem, Teacher, Transaction } from './src/types';
 import { getHijriDate } from './src/utils/hijri';
+import { requireAuth, AuthRequest } from './src/middleware/auth';
+import { db } from './src/db/db';
+import { settings, rapbmItems, transactions, teachers, payrollRecords, inventory } from './src/db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { initialMadrasahInfo, initialRAPBMData } from './src/data/initialData';
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  app.use(express.json());
+  // Init Settings
+  try {
+    const existingSettings = await db.select().from(settings).where(eq(settings.id, 'app-settings'));
+    if (existingSettings.length === 0) {
+      await db.insert(settings).values({ id: 'app-settings', ...initialMadrasahInfo });
+    }
+  } catch (e) {
+    console.error('Error initializing settings:', e);
+  }
 
-  // In-Memory Data State with initial seed from RAPBM 1446-1447 H PDF
-  let madrasahInfo: MadrasahInfo = { ...initialMadrasahInfo };
-  let rapbmData: RAPBMItem[] = [...initialRAPBMData];
-  let teachers: Teacher[] = [...initialTeachers];
-  let transactions: Transaction[] = [...initialTransactions];
-  let payrolls: PayrollRecord[] = [...initialPayrolls];
+  // Init RAPBM
+  try {
+    const existingRapbm = await db.select().from(rapbmItems);
+    if (existingRapbm.length === 0) {
+      await db.insert(rapbmItems).values(initialRAPBMData.map(i => ({
+        id: i.id,
+        tahunAjaran: i.tahunAjaran,
+        type: i.type,
+        categoryCode: i.categoryCode,
+        categoryName: i.categoryName,
+        noUrut: i.noUrut,
+        noKode: i.noKode,
+        uraian: i.uraian,
+        jumlahAnggaran: i.jumlahAnggaran,
+        realita: i.realita,
+        persentase: i.persentase,
+      })));
+    }
+  } catch (e) {
+    console.error('Error initializing rapbm:', e);
+  }
+
 
   // API ROUTES
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', appName: madrasahInfo.namaMadrasah });
+  app.get('/api/health', async (req, res) => {
+    res.json({ status: 'ok' });
   });
 
   // 1. Madrasah Settings
-  app.get('/api/settings', (req, res) => {
-    res.json(madrasahInfo);
+  app.get('/api/settings', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const data = await db.select().from(settings).where(eq(settings.id, 'app-settings'));
+      res.json(data[0]);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch settings' });
+    }
   });
 
-  app.put('/api/settings', (req, res) => {
-    madrasahInfo = { ...madrasahInfo, ...req.body };
-    res.json(madrasahInfo);
+  app.put('/api/settings', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const updated = await db.update(settings).set(req.body).where(eq(settings.id, 'app-settings')).returning();
+      res.json(updated[0]);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update settings' });
+    }
   });
 
   // 2. RAPBM Multi-Year Management
-  app.get('/api/rapbm', (req, res) => {
-    const { year } = req.query;
-    if (year) {
-      const filtered = rapbmData.filter((i) => i.tahunAjaran === year || (!i.tahunAjaran && year === '1446 - 1447 H.'));
-      return res.json(filtered);
+  app.get('/api/rapbm', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { year } = req.query;
+      let data;
+      if (year) {
+        data = await db.select().from(rapbmItems).where(eq(rapbmItems.tahunAjaran, year as string));
+      } else {
+        data = await db.select().from(rapbmItems);
+      }
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch rapbm' });
     }
-    res.json(rapbmData);
   });
 
-  app.post('/api/rapbm/seed-year', (req, res) => {
-    const { items } = req.body;
-    if (Array.isArray(items)) {
-      items.forEach((newItem: RAPBMItem) => {
-        const existingIdx = rapbmData.findIndex((r) => r.id === newItem.id);
-        if (existingIdx !== -1) {
-          rapbmData[existingIdx] = newItem;
-        } else {
-          rapbmData.push(newItem);
+  app.post('/api/rapbm/seed-year', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { items } = req.body;
+      if (Array.isArray(items) && items.length > 0) {
+        // Upsert logic
+        for (const i of items) {
+          const existing = await db.select().from(rapbmItems).where(eq(rapbmItems.id, i.id));
+          if (existing.length > 0) {
+            await db.update(rapbmItems).set(i).where(eq(rapbmItems.id, i.id));
+          } else {
+            await db.insert(rapbmItems).values(i);
+          }
         }
-      });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to seed rapbm' });
     }
-    res.json({ success: true, totalItems: rapbmData.length });
   });
 
-  app.put('/api/rapbm/:id', (req, res) => {
-    const { id } = req.params;
-    const { jumlahAnggaran, realita } = req.body;
-
-    const idx = rapbmData.findIndex((item) => item.id === id);
-    if (idx !== -1) {
-      const item = rapbmData[idx];
-      const newAnggaran = jumlahAnggaran !== undefined ? Number(jumlahAnggaran) : item.jumlahAnggaran;
-      const newRealita = realita !== undefined ? Number(realita) : item.realita;
-      const persentase = newAnggaran > 0 ? Math.round((newRealita / newAnggaran) * 100) : 100;
-
-      rapbmData[idx] = {
-        ...item,
-        jumlahAnggaran: newAnggaran,
-        realita: newRealita,
-        persentase,
-      };
-      return res.json(rapbmData[idx]);
+  app.put('/api/rapbm/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { jumlahAnggaran, realita } = req.body;
+      const item = await db.select().from(rapbmItems).where(eq(rapbmItems.id, id as string));
+      if (item.length > 0) {
+        const newAnggaran = jumlahAnggaran !== undefined ? Number(jumlahAnggaran) : item[0].jumlahAnggaran;
+        const newRealita = realita !== undefined ? Number(realita) : item[0].realita;
+        const persentase = newAnggaran > 0 ? Math.round((newRealita / newAnggaran) * 100) : 100;
+        
+        const updated = await db.update(rapbmItems).set({
+          jumlahAnggaran: newAnggaran,
+          realita: newRealita,
+          persentase,
+        }).where(eq(rapbmItems.id, id as string)).returning();
+        return res.json(updated[0]);
+      }
+      res.status(404).json({ error: 'Item RAPBM tidak ditemukan' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update rapbm' });
     }
-    res.status(404).json({ error: 'Item RAPBM tidak ditemukan' });
   });
 
   // 3. Real-time Cashbook Transactions
-  app.get('/api/transactions', (req, res) => {
-    res.json(transactions);
+  app.get('/api/transactions', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const data = await db.select().from(transactions).orderBy(desc(transactions.id));
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
   });
 
-  app.post('/api/transactions', (req, res) => {
-    const newTrx: Transaction = {
-      id: `trx-${Date.now()}`,
-      receiptNumber: req.body.receiptNumber || `KW-MU22-${Math.floor(100 + Math.random() * 900)}`,
-      recordedBy: req.body.recordedBy || madrasahInfo.treasurerName,
-      ...req.body,
-    };
+  app.post('/api/transactions', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const settingsData = await db.select().from(settings).where(eq(settings.id, 'app-settings'));
+      const treasurerName = settingsData[0]?.treasurerName || 'Unknown';
+      const newTrx = {
+        id: `trx-${Date.now()}`,
+        receiptNumber: req.body.receiptNumber || `KW-MU22-${Math.floor(100 + Math.random() * 900)}`,
+        recordedBy: req.body.recordedBy || treasurerName,
+        tahunAjaran: req.body.tahunAjaran,
+        dateGregorian: req.body.dateGregorian,
+        dateHijri: req.body.dateHijri,
+        type: req.body.type,
+        rapbmCode: req.body.rapbmCode,
+        category: req.body.category,
+        description: req.body.description,
+        amount: req.body.amount,
+      };
+      const inserted = await db.insert(transactions).values(newTrx).returning();
 
-    transactions.unshift(newTrx);
-
-    // Automatically update actual realization in RAPBM if linked
-    if (newTrx.rapbmCode) {
-      const rapbmIdx = rapbmData.findIndex((r) => r.noKode === newTrx.rapbmCode);
-      if (rapbmIdx !== -1) {
-        const item = rapbmData[rapbmIdx];
-        const updatedRealita = item.realita + newTrx.amount;
-        const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
-
-        rapbmData[rapbmIdx] = {
-          ...item,
-          realita: updatedRealita,
-          persentase,
-        };
+      if (newTrx.rapbmCode) {
+        const rapbmItem = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, newTrx.rapbmCode));
+        if (rapbmItem.length > 0) {
+          const item = rapbmItem[0];
+          const updatedRealita = item.realita + newTrx.amount;
+          const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
+          await db.update(rapbmItems).set({ realita: updatedRealita, persentase }).where(eq(rapbmItems.id, item.id));
+        }
       }
+      res.status(201).json(inserted[0]);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to create transaction' });
     }
-
-    res.status(201).json(newTrx);
   });
 
-  app.delete('/api/transactions/:id', (req, res) => {
-    const { id } = req.params;
-    const deleted = transactions.find((t) => t.id === id);
-    transactions = transactions.filter((t) => t.id !== id);
-
-    // Rollback RAPBM realization if linked
-    if (deleted && deleted.rapbmCode) {
-      const rapbmIdx = rapbmData.findIndex((r) => r.noKode === deleted.rapbmCode);
-      if (rapbmIdx !== -1) {
-        const item = rapbmData[rapbmIdx];
-        const updatedRealita = Math.max(0, item.realita - deleted.amount);
-        const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
-
-        rapbmData[rapbmIdx] = {
-          ...item,
-          realita: updatedRealita,
-          persentase,
-        };
+  app.delete('/api/transactions/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const trx = await db.select().from(transactions).where(eq(transactions.id, id as string));
+      if (trx.length > 0) {
+        await db.delete(transactions).where(eq(transactions.id, id as string));
+        if (trx[0].rapbmCode) {
+          const rapbmItem = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, trx[0].rapbmCode));
+          if (rapbmItem.length > 0) {
+            const item = rapbmItem[0];
+            const updatedRealita = Math.max(0, item.realita - trx[0].amount);
+            const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
+            await db.update(rapbmItems).set({ realita: updatedRealita, persentase }).where(eq(rapbmItems.id, item.id));
+          }
+        }
       }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete transaction' });
     }
-
-    res.json({ success: true });
   });
 
   // 4. Master Teachers
-  app.get('/api/teachers', (req, res) => {
-    res.json(teachers);
-  });
-
-  app.post('/api/teachers', (req, res) => {
-    const newTeacher: Teacher = {
-      id: `t-${Date.now()}`,
-      status: 'AKTIF',
-      ...req.body,
-    };
-    teachers.push(newTeacher);
-    res.status(201).json(newTeacher);
-  });
-
-  app.put('/api/teachers/:id', (req, res) => {
-    const { id } = req.params;
-    const idx = teachers.findIndex((t) => t.id === id);
-    if (idx !== -1) {
-      teachers[idx] = { ...teachers[idx], ...req.body };
-      return res.json(teachers[idx]);
+  app.get('/api/teachers', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const data = await db.select().from(teachers);
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch teachers' });
     }
-    res.status(404).json({ error: 'Ustadz/Guru tidak ditemukan' });
   });
 
-  app.delete('/api/teachers/:id', (req, res) => {
-    const { id } = req.params;
-    teachers = teachers.filter((t) => t.id !== id);
-    res.json({ success: true });
+  app.post('/api/teachers', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const newTeacher = {
+        id: `t-${Date.now()}`,
+        status: 'AKTIF',
+        nipNu: req.body.nipNu,
+        name: req.body.name,
+        role: req.body.role,
+        jamMengajar: req.body.jamMengajar,
+        tarifPerJam: req.body.tarifPerJam,
+        tunjanganJabatan: req.body.tunjanganJabatan,
+        tunjanganMasaKerja: req.body.tunjanganMasaKerja,
+        tunjanganKehadiran: req.body.tunjanganKehadiran,
+        potonganInfaq: req.body.potonganInfaq,
+        potonganTabungan: req.body.potonganTabungan,
+        bankAccount: req.body.bankAccount,
+      };
+      const inserted = await db.insert(teachers).values(newTeacher).returning();
+      res.status(201).json(inserted[0]);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to add teacher' });
+    }
+  });
+
+  app.put('/api/teachers/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await db.update(teachers).set(req.body).where(eq(teachers.id, id as string)).returning();
+      
+      if (updated.length > 0) {
+        // Sync payroll records when master teacher changes
+        await db.update(payrollRecords)
+          .set({
+            teacherName: req.body.name,
+            nipNu: req.body.nipNu,
+            role: req.body.role,
+            jamMengajar: req.body.jamMengajar,
+          })
+          .where(eq(payrollRecords.teacherId, id as string));
+          
+        return res.json(updated[0]);
+      }
+      res.status(404).json({ error: 'Ustadz/Guru tidak ditemukan' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update teacher' });
+    }
+  });
+
+  app.delete('/api/teachers/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await db.delete(teachers).where(eq(teachers.id, id as string));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete teacher' });
+    }
   });
 
   // 5. Payroll (Slip Gaji)
-  app.get('/api/payroll', (req, res) => {
-    res.json(payrolls);
+  app.get('/api/payroll', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const data = await db.select().from(payrollRecords).orderBy(desc(payrollRecords.id));
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch payrolls' });
+    }
   });
 
-  app.post('/api/payroll', (req, res) => {
-    const newPayroll: PayrollRecord = {
-      id: `pay-${Date.now()}`,
-      status: 'LUNAS',
-      ...req.body,
-    };
-    payrolls.unshift(newPayroll);
+  app.post('/api/payroll', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const newPayroll = {
+        id: `pay-${Date.now()}`,
+        status: 'LUNAS',
+        ...req.body,
+      };
+      const inserted = await db.insert(payrollRecords).values(newPayroll).returning();
+      
+      const settingsData = await db.select().from(settings).where(eq(settings.id, 'app-settings'));
+      const treasurerName = settingsData[0]?.treasurerName || 'Unknown';
 
-    // Automatically record as an expense transaction under Bisyaroh Guru (1.1) or TU (1.3)
-    const isTU = newPayroll.role.toLowerCase().includes('tu') || newPayroll.role.toLowerCase().includes('tata usaha');
-    const rapbmCode = isTU ? '1.3' : '1.1';
+      const isTU = newPayroll.role.toLowerCase().includes('tu') || newPayroll.role.toLowerCase().includes('tata usaha');
+      const rapbmCode = isTU ? '1.3' : '1.1';
+      const newTrx = {
+        id: `trx-pay-${Date.now()}`,
+        dateGregorian: newPayroll.dateGeneratedGregorian,
+        dateHijri: newPayroll.dateGeneratedHijri,
+        type: 'OUT',
+        rapbmCode,
+        category: 'BISYAROH DAN TUNJANGAN',
+        description: `Bisyaroh Ustadz/ah ${newPayroll.teacherName} (${newPayroll.monthHijri})`,
+        amount: newPayroll.bisyarohBersih,
+        recordedBy: treasurerName,
+        receiptNumber: `PAY-${newPayroll.id}`,
+      };
+      await db.insert(transactions).values(newTrx);
 
-    const newTrx: Transaction = {
-      id: `trx-pay-${Date.now()}`,
-      dateGregorian: newPayroll.dateGeneratedGregorian,
-      dateHijri: newPayroll.dateGeneratedHijri,
-      type: 'OUT',
-      rapbmCode,
-      category: 'BISYAROH DAN TUNJANGAN',
-      description: `Bisyaroh Ustadz/ah ${newPayroll.teacherName} (${newPayroll.monthHijri})`,
-      amount: newPayroll.bisyarohBersih,
-      recordedBy: madrasahInfo.treasurerName,
-      receiptNumber: `PAY-${newPayroll.id}`,
-    };
-
-    transactions.unshift(newTrx);
-
-    // Update RAPBM realization
-    const rapbmIdx = rapbmData.findIndex((r) => r.noKode === rapbmCode);
-    if (rapbmIdx !== -1) {
-      const item = rapbmData[rapbmIdx];
-      const updatedRealita = item.realita + newPayroll.bisyarohBersih;
-      const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
-      rapbmData[rapbmIdx] = { ...item, realita: updatedRealita, persentase };
+      const rapbmItem = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, rapbmCode));
+      if (rapbmItem.length > 0) {
+        const item = rapbmItem[0];
+        const updatedRealita = item.realita + newPayroll.bisyarohBersih;
+        const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
+        await db.update(rapbmItems).set({ realita: updatedRealita, persentase }).where(eq(rapbmItems.id, item.id));
+      }
+      res.status(201).json(inserted[0]);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to create payroll' });
     }
+  });
 
-    res.status(201).json(newPayroll);
+  // 5.5 Inventory
+  app.get("/api/inventory", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const data = await db.select().from(inventory).orderBy(desc(inventory.id));
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch inventory" });
+    }
+  });
+
+  app.post("/api/inventory", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const newItem = {
+        id: `inv-${Date.now()}`,
+        name: req.body.name,
+        category: req.body.category,
+        quantity: req.body.quantity,
+        condition: req.body.condition,
+        acquisitionDate: req.body.acquisitionDate,
+        notes: req.body.notes,
+      };
+      const inserted = await db.insert(inventory).values(newItem).returning();
+      res.status(201).json(inserted[0]);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add inventory" });
+    }
+  });
+
+  app.put("/api/inventory/:id", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await db.update(inventory).set(req.body).where(eq(inventory.id, id as string)).returning();
+      if (updated.length > 0) return res.json(updated[0]);
+      res.status(404).json({ error: "Inventory item not found" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update inventory" });
+    }
+  });
+
+  app.delete("/api/inventory/:id", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await db.delete(inventory).where(eq(inventory.id, id as string));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete inventory" });
+    }
   });
 
   // 6. Hijri Conversion API
-  app.get('/api/hijri', (req, res) => {
-    const dateStr = req.query.date as string;
-    const hijri = getHijriDate(dateStr, madrasahInfo.hijriOffsetDays);
-    res.json(hijri);
+  app.get('/api/hijri', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const dateStr = req.query.date as string;
+      const settingsData = await db.select().from(settings).where(eq(settings.id, 'app-settings'));
+      const offset = settingsData[0]?.hijriOffsetDays || 0;
+      const hijri = getHijriDate(dateStr, offset);
+      res.json(hijri);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to convert hijri' });
+    }
   });
 
-  // Vite middleware for development vs static serve for production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -234,7 +390,7 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
-
+  
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Madrasah Finance Server] Running on http://localhost:${PORT}`);
   });

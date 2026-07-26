@@ -32,6 +32,7 @@ export const TeachersManager: React.FC<TeachersManagerProps> = ({
   const [potonganInfaq, setPotonganInfaq] = useState<number>(15000);
   const [potonganTabungan, setPotonganTabungan] = useState<number>(25000);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keepOpen, setKeepOpen] = useState(false);
 
   const openNewForm = () => {
     setEditingTeacher(null);
@@ -85,10 +86,17 @@ export const TeachersManager: React.FC<TeachersManagerProps> = ({
 
       if (editingTeacher) {
         await onUpdateTeacher(editingTeacher.id, data);
+        setIsModalOpen(false);
       } else {
         await onAddTeacher(data);
+        if (keepOpen) {
+          // Reset just the unique fields, keep others to speed up entry
+          setNipNu(`MU22-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`);
+          setName('');
+        } else {
+          setIsModalOpen(false);
+        }
       }
-      setIsModalOpen(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -429,21 +437,37 @@ export const TeachersManager: React.FC<TeachersManagerProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-600 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Simpan...' : 'Simpan Data Guru'}
-                </button>
+              <div className="flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 pt-3 border-t">
+                {!editingTeacher ? (
+                  <label className="flex items-center space-x-2 text-slate-700 font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={keepOpen}
+                      onChange={(e) => setKeepOpen(e.target.checked)}
+                      className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                    />
+                    <span>Input data lagi setelah simpan</span>
+                  </label>
+                ) : (
+                  <div />
+                )}
+                
+                <div className="flex space-x-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-600 disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Simpan...' : 'Simpan Data'}
+                  </button>
+                </div>
               </div>
 
             </form>

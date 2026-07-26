@@ -156,9 +156,9 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
 
   const filteredPayrolls = payrolls.filter(
     (p) =>
-      p.teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.monthHijri.toLowerCase().includes(searchTerm.toLowerCase())
+      p.monthHijri === selectedMonthHijri &&
+      (p.teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       p.role.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const totalBisyarohPaid = filteredPayrolls.reduce((sum, p) => sum + p.bisyarohBersih, 0);
@@ -339,21 +339,42 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
 
             <form onSubmit={handleGenerateIndividual} className="space-y-3 text-xs">
               
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Pilih Ustadz / Staff TU</label>
-                <select
-                  value={selectedTeacherId}
-                  onChange={(e) => handleTeacherChange(e.target.value)}
-                  required
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">-- Pilih Ustadz / Staff --</option>
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} - {t.role} ({t.jamMengajar} Jam)
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Pilih Ustadz / Staff TU</label>
+                  <select
+                    value={selectedTeacherId}
+                    onChange={(e) => handleTeacherChange(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">-- Pilih Ustadz / Staff --</option>
+                    {teachers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} - {t.role} ({t.jamMengajar} Jam)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Bulan Hijriyah</label>
+                  <select
+                    value={selectedMonthHijri}
+                    onChange={(e) => setSelectedMonthHijri(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="Syawal">Syawal</option>
+                    <option value="Dz. Qo'dah">Dz. Qo'dah</option>
+                    <option value="Dz. Hijjah">Dz. Hijjah</option>
+                    <option value="Muharrom">Muharrom</option>
+                    <option value="Shafar">Shafar</option>
+                    <option value="Robiul Awal">Robiul Awal</option>
+                    <option value="Robiul Tsani">Robiul Tsani</option>
+                    <option value="Jumadal Awal">Jumadal Awal</option>
+                    <option value="Jumadal Tsani">Jumadal Tsani</option>
+                    <option value="Rajab">Rajab</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

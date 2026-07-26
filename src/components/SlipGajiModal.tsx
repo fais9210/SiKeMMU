@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Printer, X, Building2, CheckCircle2 } from 'lucide-react';
+import { Download, Printer, X, Building2, CheckCircle2, ArrowLeft, Home } from 'lucide-react';
 import { MadrasahInfo, PayrollRecord } from '../types';
 import { formatCurrency } from '../utils/hijri';
 
@@ -8,6 +8,7 @@ interface SlipGajiModalProps {
   payroll: PayrollRecord;
   onClose: () => void;
   onDownloadPDF: (p: PayrollRecord) => void;
+  onGoHome?: () => void;
 }
 
 export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
@@ -15,6 +16,7 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
   payroll,
   onClose,
   onDownloadPDF,
+  onGoHome,
 }) => {
   const handlePrint = () => {
     window.print();
@@ -50,9 +52,19 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+              className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5 ml-2"
             >
-              <X className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
+            {onGoHome && (
+              <button
+                onClick={onGoHome}
+                className="px-3.5 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5 ml-2"
+              >
+                <Home className="w-4 h-4" />
+                <span>Beranda</span>
+              </button>
+            )}
+              <span>Kembali</span>
             </button>
           </div>
         </div>

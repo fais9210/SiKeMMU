@@ -346,3 +346,72 @@ export function generateCashFlowPDF(
 
   doc.save(`Laporan_Buku_Kas_${periodStr.replace(/\s+/g, '_')}.pdf`);
 }
+
+export function generateInventoryPDF(
+  madrasah: MadrasahInfo,
+  inventoryData: any[],
+  hijriDateStr: string
+) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  // Header / Kop
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('LAPORAN DATA INVENTARIS MADRASAH', 105, 14, { align: 'center' });
+  
+  doc.setFontSize(12);
+  doc.text(`TAHUN AJARAN : ${madrasah.tahunAjaranHijri}`, 105, 20, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Nama Madrasah : ${madrasah.namaMadrasah}`, 14, 28);
+  doc.text(`Alamat              : ${madrasah.alamat}`, 14, 33);
+  doc.text(`Kecamatan        : ${madrasah.kecamatan}`, 130, 28);
+  doc.text(`Kabupaten        : ${madrasah.kabupaten}`, 130, 33);
+
+  const tableRows: any[] = [];
+  inventoryData.forEach((item, index) => {
+    tableRows.push([
+      index + 1,
+      item.name,
+      item.category,
+      item.quantity,
+      item.condition,
+      item.acquisitionDate || '-',
+      item.notes || '-',
+    ]);
+  });
+
+  autoTable(doc, {
+    startY: 40,
+    head: [['No', 'Nama Barang', 'Kategori / Ruang', 'Jumlah', 'Kondisi', 'Tgl Diperoleh', 'Keterangan']],
+    body: tableRows,
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [16, 185, 129] },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY || 40;
+
+  // Signatures
+  doc.setFontSize(9);
+  doc.text('Mengetahui,', 40, finalY + 15, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(madrasah.headmasterTitle, 40, finalY + 20, { align: 'center' });
+  doc.text(madrasah.headmasterName, 40, finalY + 45, { align: 'center' });
+  doc.setLineWidth(0.5);
+  doc.line(20, finalY + 46, 60, finalY + 46);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Karangmenggah, ${hijriDateStr}`, 170, finalY + 15, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text('Pengurus Madrasah', 170, finalY + 20, { align: 'center' });
+  doc.text(madrasah.pengurusName, 170, finalY + 45, { align: 'center' });
+  doc.line(150, finalY + 46, 190, finalY + 46);
+
+  doc.save(`Inventaris_Madrasah_${madrasah.tahunAjaranHijri.replace(/\s+/g, '_')}.pdf`);
+}

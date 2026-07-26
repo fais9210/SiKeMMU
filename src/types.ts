@@ -84,6 +84,7 @@ export interface MadrasahInfo {
   treasurerName: string;
   treasurerTitle: string;
   hijriOffsetDays: number; // Custom offset +/- 2 days
+  logoUrl?: string;
 }
 
 export interface HijriDateObj {
@@ -93,4 +94,14 @@ export interface HijriDateObj {
   year: number;
   dayName: string;
   formatted: string; // "10 Ramadhan 1447 H"
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  condition: 'BAIK' | 'KURANG BAIK' | 'RUSAK BERAT';
+  acquisitionDate?: string;
+  notes?: string;
 }

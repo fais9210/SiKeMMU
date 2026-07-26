@@ -1,3 +1,6 @@
+import { apiFetch } from "./lib/api";
+import { auth, loginWithGoogle, logout } from "./lib/firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar, ActiveTab } from './components/Sidebar';
@@ -8,6 +11,7 @@ import { PayrollManager } from './components/PayrollManager';
 import { SlipGajiModal } from './components/SlipGajiModal';
 import { ReportsManager } from './components/ReportsManager';
 import { TeachersManager } from './components/TeachersManager';
+import { InventoryManager } from './components/InventoryManager';
 import { SettingsModal } from './components/SettingsModal';
 
 import {
@@ -29,11 +33,23 @@ import { getHijriDate } from './utils/hijri';
 import {
   generateCashFlowPDF,
   generateRAPBMPDF,
+  generateInventoryPDF,
   generateSlipGajiPDF,
 } from './utils/pdfGenerator';
 import { AddYearModal } from './components/AddYearModal';
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
@@ -66,11 +82,11 @@ export default function App() {
     setIsSyncing(true);
     try {
       const [resSettings, resRapbm, resTrx, resTeachers, resPayroll] = await Promise.all([
-        fetch('/api/settings').catch(() => null),
-        fetch('/api/rapbm').catch(() => null),
-        fetch('/api/transactions').catch(() => null),
-        fetch('/api/teachers').catch(() => null),
-        fetch('/api/payroll').catch(() => null),
+        apiFetch('/api/settings').catch(() => null),
+        apiFetch('/api/rapbm').catch(() => null),
+        apiFetch('/api/transactions').catch(() => null),
+        apiFetch('/api/teachers').catch(() => null),
+        apiFetch('/api/payroll').catch(() => null),
       ]);
 
       if (resSettings && resSettings.ok) setMadrasahInfo(await resSettings.json());
@@ -86,8 +102,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchBackendData();
-  }, []);
+    if (user) {
+      fetchBackendData();
+    }
+  }, [user]);
 
   // Filter RAPBM for current selected year
   const currentYearRapbm = rapbmData.filter(
@@ -108,7 +126,7 @@ export default function App() {
       setRapbmData((prev) => [...prev, ...defaultItems]);
 
       // Seed to backend
-      fetch('/api/rapbm/seed-year', {
+      apiFetch('/api/rapbm/seed-year', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: defaultItems }),
@@ -136,7 +154,7 @@ export default function App() {
     const newSettings = { ...madrasahInfo, ...updated };
     setMadrasahInfo(newSettings);
     try {
-      await fetch('/api/settings', {
+      await apiFetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
@@ -164,7 +182,7 @@ export default function App() {
     );
 
     try {
-      await fetch(`/api/rapbm/${id}`, {
+      await apiFetch(`/api/rapbm/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jumlahAnggaran: newAnggaran, realita: newRealita }),
@@ -200,7 +218,7 @@ export default function App() {
     }
 
     try {
-      await fetch('/api/transactions', {
+      await apiFetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(trxData),
@@ -231,7 +249,7 @@ export default function App() {
     }
 
     try {
-      await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/transactions/${id}`, { method: 'DELETE' });
     } catch (e) {
       console.error(e);
     }
@@ -245,7 +263,7 @@ export default function App() {
     setTeachers((prev) => [...prev, newT]);
 
     try {
-      await fetch('/api/teachers', {
+      await apiFetch('/api/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(teacherData),
@@ -261,11 +279,15 @@ export default function App() {
     );
 
     try {
-      await fetch(`/api/teachers/${id}`, {
+      await apiFetch(`/api/teachers/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       });
+      // Sync payrolls after teacher is updated
+      const payRes = await apiFetch('/api/payrolls');
+      const payData = await payRes.json();
+      setPayrolls(payData);
     } catch (e) {
       console.error(e);
     }
@@ -274,7 +296,7 @@ export default function App() {
   const handleDeleteTeacher = async (id: string) => {
     setTeachers((prev) => prev.filter((t) => t.id !== id));
     try {
-      await fetch(`/api/teachers/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/teachers/${id}`, { method: 'DELETE' });
     } catch (e) {
       console.error(e);
     }
@@ -308,7 +330,7 @@ export default function App() {
     setTransactions((prev) => [newTrx, ...prev]);
 
     try {
-      await fetch('/api/payroll', {
+      await apiFetch('/api/payroll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payrollData),
@@ -318,28 +340,50 @@ export default function App() {
     }
   };
 
+  const activeMadrasahInfo = { ...madrasahInfo, tahunAjaranHijri: selectedYear };
+
   // PDF Export Triggers
   const handleExportRAPBMPDF = () => {
     const currentHijri = getHijriDate(new Date(), madrasahInfo.hijriOffsetDays);
-    const activeMadrasahInfo = { ...madrasahInfo, tahunAjaranHijri: selectedYear };
     generateRAPBMPDF(activeMadrasahInfo, currentYearRapbm, currentHijri.formatted);
   };
 
   const handleExportCashflowPDF = () => {
     const currentHijri = getHijriDate(new Date(), madrasahInfo.hijriOffsetDays);
-    generateCashFlowPDF(madrasahInfo, transactions, selectedYear, currentHijri.formatted);
+    generateCashFlowPDF(activeMadrasahInfo, transactions, selectedYear, currentHijri.formatted);
+  };
+
+  const handleExportInventoryPDF = (inventoryData: any[]) => {
+    const currentHijri = getHijriDate(new Date(), madrasahInfo.hijriOffsetDays);
+    generateInventoryPDF(activeMadrasahInfo, inventoryData, currentHijri.formatted);
   };
 
   const handleExportSlipPDF = (payroll: PayrollRecord) => {
-    generateSlipGajiPDF({ ...madrasahInfo, tahunAjaranHijri: selectedYear }, payroll);
+    generateSlipGajiPDF(activeMadrasahInfo, payroll);
   };
+
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div></div>;
+  if (!user) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        </div>
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">Madrasah Finance</h2>
+        <p className="text-slate-600 mb-8">Silakan masuk untuk mengakses sistem</p>
+        <button onClick={loginWithGoogle} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center">
+          Masuk dengan Google
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div id="app-root-container" className="min-h-screen bg-slate-100 font-sans text-slate-800 flex flex-col">
       
       {/* Top Navbar */}
       <Navbar
-        madrasah={madrasahInfo}
+        madrasah={activeMadrasahInfo}
         selectedYear={selectedYear}
         availableYears={availableYears}
         onSelectYear={handleSelectYear}
@@ -375,7 +419,7 @@ export default function App() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           {activeTab === 'dashboard' && (
             <DashboardOverview
-              madrasah={madrasahInfo}
+              madrasah={activeMadrasahInfo}
               selectedYear={selectedYear}
               availableYears={availableYears}
               onSelectYear={handleSelectYear}
@@ -393,7 +437,7 @@ export default function App() {
 
           {activeTab === 'rapbm' && (
             <RAPBMTable
-              madrasah={madrasahInfo}
+              madrasah={activeMadrasahInfo}
               selectedYear={selectedYear}
               availableYears={availableYears}
               onSelectYear={handleSelectYear}
@@ -406,7 +450,7 @@ export default function App() {
 
           {activeTab === 'cashbook' && (
             <CashBook
-              madrasah={madrasahInfo}
+              madrasah={activeMadrasahInfo}
               transactions={transactions}
               rapbmData={currentYearRapbm}
               onAddTransaction={handleAddTransaction}
@@ -419,7 +463,7 @@ export default function App() {
 
           {activeTab === 'payroll' && (
             <PayrollManager
-              madrasah={madrasahInfo}
+              madrasah={activeMadrasahInfo}
               selectedYear={selectedYear}
               teachers={teachers}
               payrolls={currentYearPayrolls}
@@ -431,7 +475,7 @@ export default function App() {
 
           {activeTab === 'reports' && (
             <ReportsManager
-              madrasah={madrasahInfo}
+              madrasah={activeMadrasahInfo}
               rapbmData={currentYearRapbm}
               transactions={transactions}
               payrolls={currentYearPayrolls}
@@ -447,6 +491,10 @@ export default function App() {
               onUpdateTeacher={handleUpdateTeacher}
               onDeleteTeacher={handleDeleteTeacher}
             />
+          )}
+
+          {activeTab === 'inventory' && (
+            <InventoryManager onExportPDF={handleExportInventoryPDF} />
           )}
 
           {activeTab === 'settings' && (
@@ -476,6 +524,10 @@ export default function App() {
           payroll={selectedPayrollForModal}
           onClose={() => setSelectedPayrollForModal(null)}
           onDownloadPDF={handleExportSlipPDF}
+          onGoHome={() => {
+            setSelectedPayrollForModal(null);
+            setActiveTab('dashboard');
+          }}
         />
       )}
 

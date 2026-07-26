@@ -115,22 +115,29 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       {/* Top Banner Greeting */}
       <div className="bg-emerald-900 rounded-xl p-6 text-white shadow-md relative overflow-hidden border border-emerald-800">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center space-x-1.5 bg-emerald-800 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-widest font-bold text-emerald-300 border border-emerald-700">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Sistem RAPBM Terpadu</span>
+          <div className="flex items-center gap-4">
+            {madrasah.logoUrl && (
+              <div className="w-16 h-24 flex-shrink-0 bg-white p-1 rounded-lg shadow-sm hidden sm:block">
+                <img src={madrasah.logoUrl} alt="Logo" className="w-full h-full object-contain" />
               </div>
-              <div className="inline-flex items-center space-x-1 bg-amber-400 text-emerald-950 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
-                <span>TA {selectedYear}</span>
+            )}
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center space-x-1.5 bg-emerald-800 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-widest font-bold text-emerald-300 border border-emerald-700">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sistem RAPBM Terpadu</span>
+                </div>
+                <div className="inline-flex items-center space-x-1 bg-amber-400 text-emerald-950 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
+                  <span>TA {selectedYear}</span>
+                </div>
               </div>
+              <h2 className="text-xl font-bold font-serif text-white tracking-tight">
+                Ringkasan Dashboard Keuangan Madrasah
+              </h2>
+              <p className="text-xs text-emerald-200/90 max-w-2xl leading-relaxed">
+                Manajemen transparansi anggaran, pencatatan transaksi real-time, penerbitan slip bisyaroh guru, dan laporan PDF otomatis untuk <strong className="text-white font-semibold">{madrasah.namaMadrasah}</strong>.
+              </p>
             </div>
-            <h2 className="text-xl font-bold font-serif text-white tracking-tight">
-              Ringkasan Dashboard Keuangan Madrasah
-            </h2>
-            <p className="text-xs text-emerald-200/90 max-w-2xl leading-relaxed">
-              Manajemen transparansi anggaran, pencatatan transaksi real-time, penerbitan slip bisyaroh guru, dan laporan PDF otomatis untuk <strong className="text-white font-semibold">{madrasah.namaMadrasah}</strong>.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">

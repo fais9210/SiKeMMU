@@ -1,31 +1,42 @@
-import React, { useState } from 'react';
-import { Settings, Save, X, Moon, Building2, UserCheck } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Settings, Save, X, Building2, UserCheck, Moon, Image as ImageIcon, Upload } from 'lucide-react';
 import { MadrasahInfo } from '../types';
 import { getHijriDate } from '../utils/hijri';
 
 interface SettingsModalProps {
   madrasah: MadrasahInfo;
-  onSave: (updated: Partial<MadrasahInfo>) => Promise<void>;
+  onSave: (info: MadrasahInfo) => Promise<void>;
   onClose: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({
-  madrasah,
-  onSave,
-  onClose,
-}) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ madrasah, onSave, onClose }) => {
   const [namaMadrasah, setNamaMadrasah] = useState(madrasah.namaMadrasah);
   const [alamat, setAlamat] = useState(madrasah.alamat);
   const [kecamatan, setKecamatan] = useState(madrasah.kecamatan);
   const [kabupaten, setKabupaten] = useState(madrasah.kabupaten);
-  const [tahunAjaranHijri, setTahunAjaranHijri] = useState(madrasah.tahunAjaranHijri);
+  
   const [pengurusName, setPengurusName] = useState(madrasah.pengurusName);
   const [headmasterName, setHeadmasterName] = useState(madrasah.headmasterName);
   const [treasurerName, setTreasurerName] = useState(madrasah.treasurerName);
+
   const [hijriOffsetDays, setHijriOffsetDays] = useState(madrasah.hijriOffsetDays);
+  const [logoUrl, setLogoUrl] = useState(madrasah.logoUrl || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const previewHijri = getHijriDate(new Date(), hijriOffsetDays);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,11 +47,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         alamat,
         kecamatan,
         kabupaten,
-        tahunAjaranHijri,
+        tahunAjaranHijri: madrasah.tahunAjaranHijri,
         pengurusName,
+        pengurusTitle: madrasah.pengurusTitle,
         headmasterName,
+        headmasterTitle: madrasah.headmasterTitle,
         treasurerName,
+        treasurerTitle: madrasah.treasurerTitle,
         hijriOffsetDays,
+        rtRw: madrasah.rtRw,
+        desaSampung: madrasah.desaSampung,
+        logoUrl
       });
       onClose();
     } finally {
@@ -70,29 +87,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Building2 className="w-4 h-4 text-emerald-700" />
               <span>Identitas KOP Madrasah</span>
             </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Nama Resmi Madrasah</label>
-              <input
-                type="text"
-                value={namaMadrasah}
-                onChange={(e) => setNamaMadrasah(e.target.value)}
-                required
-                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Alamat / RT/RW</label>
-                <input
-                  type="text"
-                  value={alamat}
-                  onChange={(e) => setAlamat(e.target.value)}
-                  required
-                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl"
+            <div className="flex gap-4 items-start">
+              <div className="flex-shrink-0 flex flex-col items-center space-y-2">
+                <div 
+                  className="w-24 h-[153px] bg-slate-100 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:bg-slate-200 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Klik untuk upload logo (250x400)"
+                >
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo Madrasah" className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="text-center p-2">
+                      <ImageIcon className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+                      <span className="text-[10px] text-slate-500 font-medium leading-tight">250x400</span>
+                    </div>
+                  )}
+                </div>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleLogoUpload} 
+                  accept="image/*" 
+                  className="hidden" 
                 />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[10px] flex items-center space-x-1 px-2 py-1 bg-white border shadow-sm rounded text-slate-600 font-medium hover:bg-slate-50"
+                >
+                  <Upload className="w-3 h-3" />
+                  <span>Upload</span>
+                </button>
               </div>
+              <div className="flex-1 space-y-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Nama Resmi Madrasah</label>
+                  <input
+                    type="text"
+                    value={namaMadrasah}
+                    onChange={(e) => setNamaMadrasah(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Alamat Lengkap</label>
+                  <input
+                    type="text"
+                    value={alamat}
+                    onChange={(e) => setAlamat(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Kecamatan</label>
                 <input
@@ -103,9 +153,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="w-full p-2.5 bg-white border border-slate-300 rounded-xl"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Kabupaten</label>
                 <input
@@ -114,16 +161,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onChange={(e) => setKabupaten(e.target.value)}
                   required
                   className="w-full p-2.5 bg-white border border-slate-300 rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Tahun Ajaran Hijriyah</label>
-                <input
-                  type="text"
-                  value={tahunAjaranHijri}
-                  onChange={(e) => setTahunAjaranHijri(e.target.value)}
-                  required
-                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-emerald-800"
                 />
               </div>
             </div>
@@ -135,7 +172,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <UserCheck className="w-4 h-4 text-emerald-700" />
               <span>Pejabat Penandatangan Laporan (TTD)</span>
             </div>
-
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Nama Pengurus Madrasah</label>
               <input
@@ -146,7 +182,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium"
               />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Nama Kepala Madrasah</label>
@@ -182,7 +217,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {previewHijri.formatted}
               </span>
             </div>
-
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
                 Koreksi Hari (+/- Hari):
@@ -223,9 +257,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Pengaturan'}</span>
             </button>
           </div>
-
         </form>
-
       </div>
     </div>
   );
