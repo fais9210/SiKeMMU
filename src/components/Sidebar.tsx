@@ -88,8 +88,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, unpai
       {/* Sidebar */}
       <aside
         id="main-sidebar"
-        className={`fixed md:relative inset-y-0 left-0 z-50 w-64 bg-emerald-900 text-white flex-shrink-0 border-r border-emerald-800 flex flex-col justify-between transform transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:hidden'
+        className={`fixed md:relative inset-y-0 left-0 z-50 md:z-10 w-64 bg-emerald-900 text-white flex-shrink-0 border-r border-emerald-800 flex flex-col justify-between transform transition-all duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0 block' : '-translate-x-full md:-ml-64 md:opacity-0 hidden md:block'
         }`}
       >
         <div className="p-5 space-y-4">
@@ -104,7 +104,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, unpai
                 <p className="text-[10px] text-emerald-300 opacity-90">Sistem Keuangan Terpadu</p>
               </div>
             </div>
-            <button onClick={onClose} className="md:hidden text-emerald-300 hover:text-white">
+            <button
+              onClick={onClose}
+              className="text-emerald-300 hover:text-white p-1 rounded-lg hover:bg-emerald-800 transition"
+              title="Sembunyikan Navigasi"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -123,7 +127,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, unpai
                 id={`sidebar-link-${item.id}`}
                 onClick={() => {
                   setActiveTab(item.id);
-                  onClose();
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    onClose();
+                  }
                 }}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-left transition-all duration-150 ${
                   isActive

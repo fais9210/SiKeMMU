@@ -461,6 +461,7 @@ export default function App() {
         onExportCashflowPDF={handleExportCashflowPDF}
         isSyncing={isSyncing}
         onRefreshData={fetchBackendData}
+        isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         user={user}
         onLogin={loginWithGoogle}

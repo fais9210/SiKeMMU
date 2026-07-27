@@ -17,6 +17,7 @@ interface NavbarProps {
   onExportCashflowPDF: () => void;
   isSyncing: boolean;
   onRefreshData: () => void;
+  isSidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   user?: User | null;
   onLogin?: () => void;
@@ -36,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onExportCashflowPDF,
   isSyncing,
   onRefreshData,
+  isSidebarOpen,
   onToggleSidebar,
   user,
   onLogin,
@@ -54,8 +56,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onToggleSidebar && (
               <button
                 onClick={onToggleSidebar}
-                className="p-1.5 -ml-1.5 rounded-lg text-emerald-300 hover:bg-emerald-800 hover:text-white transition-colors"
-                title="Toggle Sidebar"
+                className={`p-1.5 -ml-1.5 rounded-lg text-emerald-300 hover:bg-emerald-800 hover:text-white transition-colors ${
+                  isSidebarOpen ? 'bg-emerald-800/80 text-amber-300' : ''
+                }`}
+                title={isSidebarOpen ? "Sembunyikan Menu Navigasi" : "Tampilkan Menu Navigasi"}
               >
                 <Menu className="w-5 h-5" />
               </button>
