@@ -431,22 +431,6 @@ export default function App() {
     generateSlipGajiPDF(activeMadrasahInfo, payroll);
   };
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div></div>;
-  if (!user) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-        </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Madrasah Finance</h2>
-        <p className="text-slate-600 mb-8">Silakan masuk untuk mengakses sistem</p>
-        <button onClick={loginWithGoogle} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center">
-          Masuk dengan Google
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div id="app-root-container" className="min-h-screen bg-slate-100 font-sans text-slate-800 flex flex-col">
       
@@ -465,6 +449,9 @@ export default function App() {
         isSyncing={isSyncing}
         onRefreshData={fetchBackendData}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        user={user}
+        onLogin={loginWithGoogle}
+        onLogout={logout}
       />
 
       <AddYearModal
