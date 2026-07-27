@@ -96,10 +96,16 @@ export const CashBook: React.FC<CashBookProps> = ({
   };
 
   const filteredTransactions = transactions.filter((t) => {
+    const term = searchTerm.trim().toLowerCase();
     const matchesSearch =
-      t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.receiptNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      t.description.toLowerCase().includes(term) ||
+      t.category.toLowerCase().includes(term) ||
+      t.receiptNumber.toLowerCase().includes(term) ||
+      t.recordedBy.toLowerCase().includes(term) ||
+      t.dateGregorian.toLowerCase().includes(term) ||
+      t.dateHijri.toLowerCase().includes(term) ||
+      (t.rapbmCode && t.rapbmCode.toLowerCase().includes(term));
     const matchesType = filterType === 'ALL' || t.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -154,15 +160,24 @@ export const CashBook: React.FC<CashBookProps> = ({
 
         {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full sm:w-96">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Cari transaksi / kwitansi / kategori..."
+              placeholder="Cari transaksi, ustadz/pencatat, tanggal, kwitansi..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs bg-slate-200 hover:bg-slate-300 rounded-full w-4 h-4 flex items-center justify-center font-bold transition"
+                title="Bersihkan pencarian"
+              >
+                &times;
+              </button>
+            )}
           </div>
 
           <div className="flex items-center space-x-1.5 w-full sm:w-auto">

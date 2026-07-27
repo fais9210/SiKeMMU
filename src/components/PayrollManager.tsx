@@ -204,10 +204,20 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
       p.tahunAjaran === selectedFilterYear ||
       (!p.tahunAjaran && selectedFilterYear === '1446 - 1447 H.');
     const matchMonth = selectedMonthHijri === 'ALL' || p.monthHijri === selectedMonthHijri;
+
+    const term = searchTerm.trim().toLowerCase();
     const matchSearch =
-      p.teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.tahunAjaran && p.tahunAjaran.toLowerCase().includes(searchTerm.toLowerCase()));
+      !term ||
+      p.teacherName.toLowerCase().includes(term) ||
+      p.nipNu.toLowerCase().includes(term) ||
+      p.role.toLowerCase().includes(term) ||
+      p.monthHijri.toLowerCase().includes(term) ||
+      p.monthGregorian.toLowerCase().includes(term) ||
+      p.dateGeneratedHijri.toLowerCase().includes(term) ||
+      p.dateGeneratedGregorian.toLowerCase().includes(term) ||
+      (p.tahunAjaran && p.tahunAjaran.toLowerCase().includes(term)) ||
+      (p.notes && p.notes.toLowerCase().includes(term));
+
     return matchYear && matchMonth && matchSearch;
   });
 
@@ -276,15 +286,24 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
 
         {/* Filter Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="relative w-full md:w-72">
+          <div className="relative w-full md:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Cari ustadz / jabatan / tahun..."
+              placeholder="Cari ustadz / NIP / tanggal / jabatan / bulan..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs bg-slate-200 hover:bg-slate-300 rounded-full w-4 h-4 flex items-center justify-center font-bold transition"
+                title="Bersihkan pencarian"
+              >
+                &times;
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs">

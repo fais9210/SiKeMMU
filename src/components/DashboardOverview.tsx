@@ -73,15 +73,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     }
   });
 
-  // Calculate Cashbook transactions total
+  // Calculate Cashbook transactions total for non-RAPBM items
   let totalTrxIn = 0;
   let totalTrxOut = 0;
   transactions.forEach((t) => {
-    if (t.type === 'IN') totalTrxIn += t.amount;
-    if (t.type === 'OUT') totalTrxOut += t.amount;
+    if (!t.rapbmCode) {
+      if (t.type === 'IN') totalTrxIn += t.amount;
+      if (t.type === 'OUT') totalTrxOut += t.amount;
+    }
   });
 
-  const sisaKas = totalTrxIn - totalTrxOut;
+  const totalIncome = totalRealitaPenerimaan + totalTrxIn;
+  const totalExpense = totalRealitaPengeluaran + totalTrxOut;
+  const sisaKas = totalIncome - totalExpense;
   const serapanPercentage = Math.round((totalRealitaPengeluaran / (totalTargetPengeluaran || 1)) * 100);
 
   // Recharts Data Prep: Categories comparison
@@ -208,8 +212,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           <p className={`text-2xl font-bold mt-1 ${sisaKas >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
             {formatCurrency(sisaKas)}
           </p>
-          <div className="mt-2 text-[10px] text-emerald-600 font-medium">
-            + Total Penerimaan: {formatCurrency(totalTrxIn)}
+          <div className="mt-2 text-[10px] text-slate-500 font-medium flex items-center justify-between">
+            <span className="text-emerald-600 font-bold">In: {formatCurrency(totalIncome)}</span>
+            <span className="text-rose-600 font-bold">Out: {formatCurrency(totalExpense)}</span>
           </div>
         </div>
 

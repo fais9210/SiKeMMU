@@ -37,6 +37,7 @@ import {
   generateSlipGajiPDF,
 } from './utils/pdfGenerator';
 import { AddYearModal } from './components/AddYearModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -139,12 +140,24 @@ export default function App() {
     handleSelectYear(newYear);
   };
 
-  // Total Calculations
+  // Total Calculations (Saldo Kas Real-time = Penerimaan RAPBM - Pengeluaran RAPBM)
   let totalIncome = 0;
   let totalExpense = 0;
+
+  currentYearRapbm.forEach((item) => {
+    if (item.type === 'PENERIMAAN') {
+      totalIncome += item.realita;
+    } else if (item.type === 'PENGELUARAN') {
+      totalExpense += item.realita;
+    }
+  });
+
+  // Tambahkan transaksi Kas yang tidak terhubung ke kode RAPBM tertentu
   transactions.forEach((t) => {
-    if (t.type === 'IN') totalIncome += t.amount;
-    if (t.type === 'OUT') totalExpense += t.amount;
+    if (!t.rapbmCode) {
+      if (t.type === 'IN') totalIncome += t.amount;
+      if (t.type === 'OUT') totalExpense += t.amount;
+    }
   });
 
   // Handlers for Backend API Mutators
@@ -472,7 +485,7 @@ export default function App() {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-y-auto pb-20 md:pb-8">
           {activeTab === 'dashboard' && (
             <DashboardOverview
               madrasah={activeMadrasahInfo}
@@ -600,6 +613,13 @@ export default function App() {
           onClose={() => setIsSettingsOpen(false)}
         />
       )}
+
+      {/* Sticky Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenMore={() => setIsSidebarOpen(true)}
+      />
 
     </div>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Printer, Building2, CheckCircle2, ArrowLeft, Home, Trash2 } from 'lucide-react';
+import { Download, Printer, Building2, CheckCircle2, ArrowLeft, Home, Trash2, X } from 'lucide-react';
 import { MadrasahInfo, PayrollRecord } from '../types';
 import { formatCurrency } from '../utils/hijri';
 
@@ -28,7 +28,7 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8 animate-in fade-in zoom-in duration-150">
+      <div className="relative bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8 animate-in fade-in zoom-in duration-150">
         
         {/* Top Control Bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4 print:hidden">
@@ -77,10 +77,11 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
 
             <button
               onClick={onClose}
-              className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5"
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow-md transition flex items-center space-x-1.5"
+              title="Tutup / Kembali"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Kembali</span>
+              <X className="w-4 h-4" />
+              <span>Tutup</span>
             </button>
           </div>
         </div>
@@ -211,6 +212,17 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
             </div>
           </div>
 
+        </div>
+
+        {/* Bottom Control Bar */}
+        <div className="flex items-center justify-end pt-2 border-t print:hidden">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow-md transition flex items-center space-x-2"
+          >
+            <X className="w-4 h-4" />
+            <span>Tutup Modal Slip Gaji</span>
+          </button>
         </div>
 
         {/* Modal Confirm Delete */}

@@ -121,7 +121,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, unpai
               <button
                 key={item.id}
                 id={`sidebar-link-${item.id}`}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  onClose();
+                }}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-left transition-all duration-150 ${
                   isActive
                     ? 'bg-emerald-800 text-white font-semibold border border-emerald-700/60 shadow-sm'

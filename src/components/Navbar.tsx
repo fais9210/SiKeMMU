@@ -60,8 +60,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Menu className="w-5 h-5" />
               </button>
             )}
-            <div id="madrasah-icon-badge" className="p-2 bg-emerald-800 rounded-lg text-emerald-300 border border-emerald-700 shadow-inner flex items-center justify-center">
-              <Building2 className="w-5 h-5" />
+            <div id="madrasah-icon-badge" className="p-1 bg-emerald-800 rounded-lg text-emerald-300 border border-emerald-700 shadow-inner flex items-center justify-center overflow-hidden w-9 h-9 flex-shrink-0">
+              {madrasah.logoUrl ? (
+                <img src={madrasah.logoUrl} alt="Logo Madrasah" className="w-full h-full object-contain rounded" />
+              ) : (
+                <Building2 className="w-5 h-5" />
+              )}
             </div>
             <div>
               <div className="flex items-center space-x-2">
