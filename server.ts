@@ -3,7 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { getHijriDate } from './src/utils/hijri';
 import { requireAuth, AuthRequest } from './src/middleware/auth';
-import { db } from './src/db/db';
+import { db, initTables } from './src/db/db';
 import { settings, rapbmItems, transactions, teachers, payrollRecords, inventory } from './src/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { initialMadrasahInfo, initialRAPBMData } from './src/data/initialData';
@@ -13,6 +13,9 @@ async function startServer() {
   const PORT = 3000;
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  // Auto-create tables in PostgreSQL if they don't exist yet
+  await initTables();
 
   // Init Settings
   try {
