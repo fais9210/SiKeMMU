@@ -113,17 +113,19 @@ async function startServer() {
   app.put('/api/rapbm/:id', requireAuth, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const { jumlahAnggaran, realita } = req.body;
+      const { jumlahAnggaran, realita, uraian } = req.body;
       const item = await db.select().from(rapbmItems).where(eq(rapbmItems.id, id as string));
       if (item.length > 0) {
         const newAnggaran = jumlahAnggaran !== undefined ? Number(jumlahAnggaran) : item[0].jumlahAnggaran;
         const newRealita = realita !== undefined ? Number(realita) : item[0].realita;
         const persentase = newAnggaran > 0 ? Math.round((newRealita / newAnggaran) * 100) : 100;
+        const newUraian = uraian !== undefined ? String(uraian) : item[0].uraian;
         
         const updated = await db.update(rapbmItems).set({
           jumlahAnggaran: newAnggaran,
           realita: newRealita,
           persentase,
+          uraian: newUraian,
         }).where(eq(rapbmItems.id, id as string)).returning();
         return res.json(updated[0]);
       }
