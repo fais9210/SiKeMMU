@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Printer, X, Building2, CheckCircle2, ArrowLeft, Home } from 'lucide-react';
+import { Download, Printer, Building2, CheckCircle2, ArrowLeft, Home, Trash2 } from 'lucide-react';
 import { MadrasahInfo, PayrollRecord } from '../types';
 import { formatCurrency } from '../utils/hijri';
 
@@ -8,6 +8,7 @@ interface SlipGajiModalProps {
   payroll: PayrollRecord;
   onClose: () => void;
   onDownloadPDF: (p: PayrollRecord) => void;
+  onDeletePayroll?: (id: string) => Promise<void>;
   onGoHome?: () => void;
 }
 
@@ -16,8 +17,11 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
   payroll,
   onClose,
   onDownloadPDF,
+  onDeletePayroll,
   onGoHome,
 }) => {
+  const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
+
   const handlePrint = () => {
     window.print();
   };
@@ -27,13 +31,13 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
       <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8 animate-in fade-in zoom-in duration-150">
         
         {/* Top Control Bar */}
-        <div className="flex items-center justify-between border-b pb-4 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4 print:hidden">
           <div className="flex items-center space-x-2 text-emerald-800 font-bold text-sm">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <span>Slip Bisyaroh Guru - Salinan Resmi</span>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handlePrint}
               className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-xs transition flex items-center space-x-1.5"
@@ -50,20 +54,32 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
               <span>Unduh PDF</span>
             </button>
 
-            <button
-              onClick={onClose}
-              className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5 ml-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
+            {onDeletePayroll && (
+              <button
+                onClick={() => setShowConfirmDelete(true)}
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5"
+                title="Hapus Slip Gaji Ini"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Hapus Slip</span>
+              </button>
+            )}
+
             {onGoHome && (
               <button
                 onClick={onGoHome}
-                className="px-3.5 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5 ml-2"
+                className="px-3.5 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5"
               >
                 <Home className="w-4 h-4" />
                 <span>Beranda</span>
               </button>
             )}
+
+            <button
+              onClick={onClose}
+              className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
               <span>Kembali</span>
             </button>
           </div>
@@ -196,6 +212,51 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
           </div>
 
         </div>
+
+        {/* Modal Confirm Delete */}
+        {showConfirmDelete && (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-left">
+              <div className="flex items-center space-x-3 text-rose-600">
+                <div className="p-2.5 bg-rose-100 rounded-xl">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-900">Hapus Slip Bisyaroh</h3>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Apakah Anda yakin ingin menghapus slip gaji <strong className="text-slate-900">{payroll.teacherName}</strong> ({payroll.monthHijri} - TA {payroll.tahunAjaran || madrasah.tahunAjaranHijri})?
+              </p>
+              <p className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                📌 Catatan: Catatan transaksi bisyaroh terkait di Buku Kas Umum dan realisasi RAPBM juga akan disesuaikan otomatis.
+              </p>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmDelete(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowConfirmDelete(false);
+                    if (onDeletePayroll) {
+                      await onDeletePayroll(payroll.id);
+                    }
+                    onClose();
+                  }}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-md transition flex items-center space-x-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Ya, Hapus Slip</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

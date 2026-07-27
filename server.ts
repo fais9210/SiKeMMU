@@ -236,17 +236,42 @@ async function startServer() {
       const updated = await db.update(teachers).set(req.body).where(eq(teachers.id, id as string)).returning();
       
       if (updated.length > 0) {
-        // Sync payroll records when master teacher changes
-        await db.update(payrollRecords)
-          .set({
-            teacherName: req.body.name,
-            nipNu: req.body.nipNu,
-            role: req.body.role,
-            jamMengajar: req.body.jamMengajar,
-          })
-          .where(eq(payrollRecords.teacherId, id as string));
-          
-        return res.json(updated[0]);
+        const teacherData = updated[0];
+        const teacherPayrolls = await db.select().from(payrollRecords).where(eq(payrollRecords.teacherId, id as string));
+
+        for (const pr of teacherPayrolls) {
+          const jamMengajar = teacherData.jamMengajar ?? 0;
+          const tarifPerJam = teacherData.tarifPerJam ?? 0;
+          const bisyarohPokok = jamMengajar * tarifPerJam;
+          const tunjanganGuru = (teacherData.tunjanganJabatan ?? 0) + (teacherData.tunjanganMasaKerja ?? 0) + (teacherData.tunjanganKehadiran ?? 0);
+          const tunjanganLain = pr.tunjanganLain ?? 0;
+          const totalGajiKotor = bisyarohPokok + tunjanganGuru + tunjanganLain;
+
+          const potonganInfaq = teacherData.potonganInfaq ?? 0;
+          const potonganTabungan = teacherData.potonganTabungan ?? 0;
+          const potonganLain = pr.potonganLain ?? 0;
+          const totalPotongan = potonganInfaq + potonganTabungan + potonganLain;
+
+          const bisyarohBersih = Math.max(0, totalGajiKotor - totalPotongan);
+
+          await db.update(payrollRecords)
+            .set({
+              teacherName: teacherData.name,
+              nipNu: teacherData.nipNu,
+              role: teacherData.role,
+              jamMengajar,
+              bisyarohPokok,
+              tunjanganGuru,
+              totalGajiKotor,
+              potonganInfaq,
+              potonganTabungan,
+              totalPotongan,
+              bisyarohBersih,
+            })
+            .where(eq(payrollRecords.id, pr.id));
+        }
+
+        return res.json(teacherData);
       }
       res.status(404).json({ error: 'Ustadz/Guru tidak ditemukan' });
     } catch (error) {
@@ -290,6 +315,7 @@ async function startServer() {
       const rapbmCode = isTU ? '1.3' : '1.1';
       const newTrx = {
         id: `trx-pay-${Date.now()}`,
+        tahunAjaran: newPayroll.tahunAjaran,
         dateGregorian: newPayroll.dateGeneratedGregorian,
         dateHijri: newPayroll.dateGeneratedHijri,
         type: 'OUT',
@@ -304,7 +330,7 @@ async function startServer() {
 
       const rapbmItem = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, rapbmCode));
       if (rapbmItem.length > 0) {
-        const item = rapbmItem[0];
+        const item = rapbmItem.find((i) => i.tahunAjaran === newPayroll.tahunAjaran) || rapbmItem[0];
         const updatedRealita = item.realita + newPayroll.bisyarohBersih;
         const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
         await db.update(rapbmItems).set({ realita: updatedRealita, persentase }).where(eq(rapbmItems.id, item.id));
@@ -312,6 +338,65 @@ async function startServer() {
       res.status(201).json(inserted[0]);
     } catch (error) {
       res.status(500).json({ error: 'Failed to create payroll' });
+    }
+  });
+
+  app.delete('/api/payroll-all', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const allPayrolls = await db.select().from(payrollRecords);
+      for (const pay of allPayrolls) {
+        const receiptNo = `PAY-${pay.id}`;
+        await db.delete(transactions).where(eq(transactions.receiptNumber, receiptNo));
+      }
+      await db.delete(payrollRecords);
+
+      const rapbmCodes = ['1.1', '1.3'];
+      for (const code of rapbmCodes) {
+        const items = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, code));
+        for (const item of items) {
+          const trxs = await db.select().from(transactions).where(eq(transactions.rapbmCode, code));
+          const sum = trxs.reduce((acc, curr) => acc + curr.amount, 0);
+          const persentase = item.jumlahAnggaran > 0 ? Math.round((sum / item.jumlahAnggaran) * 100) : 0;
+          await db.update(rapbmItems).set({ realita: sum, persentase }).where(eq(rapbmItems.id, item.id));
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting all payrolls:', error);
+      res.status(500).json({ error: 'Failed to delete all payrolls' });
+    }
+  });
+
+  app.delete('/api/payroll/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const rawId = req.params.id as string;
+      const id = decodeURIComponent(rawId);
+      const existing = await db.select().from(payrollRecords).where(eq(payrollRecords.id, id));
+      if (existing.length > 0) {
+        const pay = existing[0];
+        const receiptNo = `PAY-${pay.id}`;
+        const trxs = await db.select().from(transactions).where(eq(transactions.receiptNumber, receiptNo));
+        for (const trx of trxs) {
+          if (trx.rapbmCode) {
+            const rapbmItem = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, trx.rapbmCode));
+            if (rapbmItem.length > 0) {
+              const item = rapbmItem.find((i) => i.tahunAjaran === pay.tahunAjaran) || rapbmItem[0];
+              const updatedRealita = Math.max(0, item.realita - trx.amount);
+              const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
+              await db.update(rapbmItems).set({ realita: updatedRealita, persentase }).where(eq(rapbmItems.id, item.id));
+            }
+          }
+          await db.delete(transactions).where(eq(transactions.id, trx.id));
+        }
+        await db.delete(payrollRecords).where(eq(payrollRecords.id, id));
+      } else {
+        await db.delete(payrollRecords).where(eq(payrollRecords.id, id));
+      }
+      res.json({ success: true, id });
+    } catch (error) {
+      console.error('Error deleting payroll:', error);
+      res.status(500).json({ error: 'Failed to delete payroll' });
     }
   });
 
@@ -386,7 +471,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

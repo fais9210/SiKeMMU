@@ -102,9 +102,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchBackendData();
-    }
+    fetchBackendData();
   }, [user]);
 
   // Filter RAPBM for current selected year
@@ -302,11 +300,12 @@ export default function App() {
     }
   };
 
-  const handleAddPayroll = async (payrollData: Omit<PayrollRecord, 'id' | 'tahunAjaran'>) => {
+  const handleAddPayroll = async (payrollData: Omit<PayrollRecord, 'id'>) => {
+    const targetYear = payrollData.tahunAjaran || selectedYear;
     const newPay: PayrollRecord = {
       id: `pay-${Date.now()}`,
-      tahunAjaran: selectedYear,
       ...payrollData,
+      tahunAjaran: targetYear,
     };
     setPayrolls((prev) => [newPay, ...prev]);
 
@@ -316,6 +315,7 @@ export default function App() {
 
     const newTrx: Transaction = {
       id: `trx-pay-${Date.now()}`,
+      tahunAjaran: targetYear,
       dateGregorian: newPay.dateGeneratedGregorian,
       dateHijri: newPay.dateGeneratedHijri,
       type: 'OUT',
@@ -329,12 +329,81 @@ export default function App() {
 
     setTransactions((prev) => [newTrx, ...prev]);
 
+    // Update RAPBM realization locally
+    setRapbmData((prev) =>
+      prev.map((item) => {
+        if (item.noKode === rapbmCode && (item.tahunAjaran === targetYear || (!item.tahunAjaran && targetYear === '1446 - 1447 H.'))) {
+          const updatedRealita = item.realita + newPay.bisyarohBersih;
+          const persentase =
+            item.jumlahAnggaran > 0
+              ? Math.round((updatedRealita / item.jumlahAnggaran) * 100)
+              : 100;
+          return { ...item, realita: updatedRealita, persentase };
+        }
+        return item;
+      })
+    );
+
     try {
       await apiFetch('/api/payroll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payrollData),
+        body: JSON.stringify(newPay),
       });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeletePayroll = async (id: string) => {
+    const target = payrolls.find((p) => p.id === id);
+    setPayrolls((prev) => prev.filter((p) => p.id !== id));
+
+    if (target) {
+      const receiptNo = `PAY-${target.id}`;
+      const trxTarget = transactions.find((t) => t.receiptNumber === receiptNo);
+      if (trxTarget) {
+        setTransactions((prev) => prev.filter((t) => t.receiptNumber !== receiptNo));
+        if (trxTarget.rapbmCode) {
+          setRapbmData((prev) =>
+            prev.map((item) => {
+              if (item.noKode === trxTarget.rapbmCode && (item.tahunAjaran === target.tahunAjaran || (!item.tahunAjaran && target.tahunAjaran === '1446 - 1447 H.'))) {
+                const updatedRealita = Math.max(0, item.realita - trxTarget.amount);
+                const persentase =
+                  item.jumlahAnggaran > 0
+                    ? Math.round((updatedRealita / item.jumlahAnggaran) * 100)
+                    : 100;
+                return { ...item, realita: updatedRealita, persentase };
+              }
+              return item;
+            })
+          );
+        }
+      }
+    }
+
+    try {
+      await apiFetch(`/api/payroll/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteAllPayrolls = async () => {
+    setPayrolls([]);
+    setTransactions((prev) => prev.filter((t) => !t.receiptNumber?.startsWith('PAY-')));
+
+    setRapbmData((prev) =>
+      prev.map((item) => {
+        if (item.noKode === '1.1' || item.noKode === '1.3') {
+          return { ...item, realita: 0, persentase: 0 };
+        }
+        return item;
+      })
+    );
+
+    try {
+      await apiFetch('/api/payroll-all', { method: 'DELETE' });
     } catch (e) {
       console.error(e);
     }
@@ -465,9 +534,13 @@ export default function App() {
             <PayrollManager
               madrasah={activeMadrasahInfo}
               selectedYear={selectedYear}
+              availableYears={availableYears}
+              onSelectYear={handleSelectYear}
               teachers={teachers}
-              payrolls={currentYearPayrolls}
+              payrolls={payrolls}
               onAddPayroll={handleAddPayroll}
+              onDeletePayroll={handleDeletePayroll}
+              onDeleteAllPayrolls={handleDeleteAllPayrolls}
               onSelectPayrollForModal={(p) => setSelectedPayrollForModal(p)}
               onDownloadPDF={handleExportSlipPDF}
             />
@@ -524,6 +597,7 @@ export default function App() {
           payroll={selectedPayrollForModal}
           onClose={() => setSelectedPayrollForModal(null)}
           onDownloadPDF={handleExportSlipPDF}
+          onDeletePayroll={handleDeletePayroll}
           onGoHome={() => {
             setSelectedPayrollForModal(null);
             setActiveTab('dashboard');
