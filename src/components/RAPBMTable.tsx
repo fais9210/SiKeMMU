@@ -19,7 +19,7 @@ interface RAPBMTableProps {
   onSelectYear: (year: string) => void;
   onAddNewYear: (newYear: string) => void;
   rapbmData: RAPBMItem[];
-  onUpdateItem: (id: string, jumlahAnggaran: number, realita: number) => Promise<void>;
+  onUpdateItem: (id: string, jumlahAnggaran: number, realita: number, uraian?: string) => Promise<void>;
   onExportPDF: () => void;
 }
 
@@ -35,6 +35,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editUraian, setEditUraian] = useState<string>('');
   const [editAnggaran, setEditAnggaran] = useState<number>(0);
   const [editRealita, setEditRealita] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,6 +73,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
 
   const startEdit = (item: RAPBMItem) => {
     setEditingId(item.id);
+    setEditUraian(item.uraian);
     setEditAnggaran(item.jumlahAnggaran);
     setEditRealita(item.realita);
   };
@@ -79,7 +81,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
   const handleSave = async (id: string) => {
     setIsSubmitting(true);
     try {
-      await onUpdateItem(id, editAnggaran, editRealita);
+      await onUpdateItem(id, editAnggaran, editRealita, editUraian);
       setEditingId(null);
     } finally {
       setIsSubmitting(false);
@@ -201,21 +203,21 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
       {/* Main Grid Table matching scanned document */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[900px]">
+          <table className="w-full text-xs text-left border-collapse min-w-[1000px]">
             <colgroup>
               {/* PENERIMAAN COLUMNS */}
-              <col className="w-10" />
-              <col className="w-14" />
-              <col className="w-auto min-w-[150px]" />
+              <col className="w-12" />
+              <col className="w-16" />
+              <col className="w-auto" />
               <col className="w-36" />
 
               {/* PENGELUARAN COLUMNS */}
-              <col className="w-10" />
-              <col className="w-14" />
-              <col className="w-auto min-w-[150px]" />
-              <col className="w-32" />
-              <col className="w-36" />
+              <col className="w-12" />
               <col className="w-16" />
+              <col className="w-auto" />
+              <col className="w-36" />
+              <col className="w-36" />
+              <col className="w-20" />
             </colgroup>
             <thead>
               {/* Super Header */}
@@ -230,18 +232,18 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
               {/* Sub Header */}
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                 {/* Penerimaan */}
-                <th className="py-2.5 px-2 text-center border-r truncate">No</th>
-                <th className="py-2.5 px-2 text-center border-r truncate">Kode</th>
-                <th className="py-2.5 px-3 border-r truncate">Uraian</th>
-                <th className="py-2.5 px-3 text-right border-r truncate">Jumlah (Rp)</th>
+                <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">No</th>
+                <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">Kode</th>
+                <th className="py-2.5 px-3 border-r">Uraian</th>
+                <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Jumlah (Rp)</th>
 
                 {/* Pengeluaran */}
-                <th className="py-2.5 px-2 text-center border-r truncate">No</th>
-                <th className="py-2.5 px-2 text-center border-r truncate">Kode</th>
-                <th className="py-2.5 px-3 border-r truncate">Uraian</th>
-                <th className="py-2.5 px-3 text-right border-r truncate">Anggaran (Rp)</th>
-                <th className="py-2.5 px-3 text-right border-r truncate">Realita (Rp)</th>
-                <th className="py-2.5 px-2 text-center truncate">% tase</th>
+                <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">No</th>
+                <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">Kode</th>
+                <th className="py-2.5 px-3 border-r">Uraian</th>
+                <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Anggaran (Rp)</th>
+                <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Realita (Rp)</th>
+                <th className="py-2.5 px-2 text-center whitespace-nowrap">% tase</th>
               </tr>
             </thead>
 
@@ -253,29 +255,37 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                 return (
                   <tr key={p?.id || k?.id || idx} className="hover:bg-slate-50 transition">
                     {/* PENERIMAAN CELLS */}
-                    <td className="py-2 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 truncate">
+                    <td className="py-2.5 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 whitespace-nowrap">
                       {p ? p.categoryCode : ''}
                     </td>
-                    <td className="py-2 px-2 text-center text-slate-600 border-r font-mono truncate">
+                    <td className="py-2.5 px-2 text-center text-slate-600 border-r font-mono whitespace-nowrap">
                       {p ? p.noKode : ''}
                     </td>
-                    <td className="py-2 px-3 border-r font-medium">
+                    <td className="py-2.5 px-3 border-r font-medium leading-relaxed">
                       {p ? (
-                        <div className="flex items-center justify-between group overflow-hidden">
-                          <span className="truncate mr-1">{p.uraian}</span>
-                          {editingId === p.id ? null : (
+                        editingId === p.id ? (
+                          <textarea
+                            rows={2}
+                            value={editUraian}
+                            onChange={(e) => setEditUraian(e.target.value)}
+                            className="w-full p-1 border border-emerald-400 rounded text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"
+                            placeholder="Uraian penerimaan"
+                          />
+                        ) : (
+                          <div className="flex items-start justify-between group gap-2">
+                            <span className="whitespace-normal break-words">{p.uraian}</span>
                             <button
                               onClick={() => startEdit(p)}
                               title="Edit Penerimaan"
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition text-slate-500 flex-shrink-0"
+                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition text-slate-500 flex-shrink-0 mt-0.5"
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )
                       ) : ''}
                     </td>
-                    <td className="py-2 px-3 text-right border-r font-semibold text-emerald-800">
+                    <td className="py-2.5 px-3 text-right border-r font-semibold text-emerald-800 whitespace-nowrap">
                       {p ? (
                         editingId === p.id ? (
                           <div className="flex items-center space-x-1 justify-end">
@@ -283,7 +293,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                               type="number"
                               value={editAnggaran}
                               onChange={(e) => setEditAnggaran(Number(e.target.value))}
-                              className="w-20 p-1 border border-emerald-400 rounded text-right text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              className="w-24 p-1 border border-emerald-400 rounded text-right text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
                             <button
                               onClick={() => handleSave(p.id)}
@@ -309,26 +319,34 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     </td>
 
                     {/* PENGELUARAN CELLS */}
-                    <td className="py-2 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 truncate">
+                    <td className="py-2.5 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 whitespace-nowrap">
                       {k ? k.categoryCode : ''}
                     </td>
-                    <td className="py-2 px-2 text-center text-slate-600 border-r font-mono truncate">
+                    <td className="py-2.5 px-2 text-center text-slate-600 border-r font-mono whitespace-nowrap">
                       {k ? k.noKode : ''}
                     </td>
-                    <td className="py-2 px-3 border-r font-medium">
+                    <td className="py-2.5 px-3 border-r font-medium leading-relaxed">
                       {k ? (
-                        <div className="flex items-center justify-between group overflow-hidden">
-                          <span className="truncate mr-1">{k.uraian}</span>
-                          {editingId === k.id ? null : (
+                        editingId === k.id ? (
+                          <textarea
+                            rows={2}
+                            value={editUraian}
+                            onChange={(e) => setEditUraian(e.target.value)}
+                            className="w-full p-1 border border-slate-300 rounded text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"
+                            placeholder="Uraian pengeluaran"
+                          />
+                        ) : (
+                          <div className="flex items-start justify-between group gap-2">
+                            <span className="whitespace-normal break-words">{k.uraian}</span>
                             <button
                               onClick={() => startEdit(k)}
                               title="Edit Pengeluaran"
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition text-slate-500 flex-shrink-0"
+                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition text-slate-500 flex-shrink-0 mt-0.5"
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )
                       ) : ''}
                     </td>
 

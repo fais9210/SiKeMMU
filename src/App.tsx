@@ -178,7 +178,8 @@ export default function App() {
   const handleUpdateRAPBMItem = async (
     id: string,
     jumlahAnggaran: number,
-    realita: number
+    realita: number,
+    uraian?: string
   ) => {
     const newAnggaran = Number(jumlahAnggaran);
     const newRealita = Number(realita);
@@ -187,7 +188,13 @@ export default function App() {
     setRapbmData((prev) =>
       prev.map((item) =>
         item.id === id
-          ? { ...item, jumlahAnggaran: newAnggaran, realita: newRealita, persentase }
+          ? {
+              ...item,
+              jumlahAnggaran: newAnggaran,
+              realita: newRealita,
+              persentase,
+              ...(uraian !== undefined ? { uraian } : {}),
+            }
           : item
       )
     );
@@ -196,7 +203,11 @@ export default function App() {
       await apiFetch(`/api/rapbm/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jumlahAnggaran: newAnggaran, realita: newRealita }),
+        body: JSON.stringify({
+          jumlahAnggaran: newAnggaran,
+          realita: newRealita,
+          ...(uraian !== undefined ? { uraian } : {}),
+        }),
       });
     } catch (e) {
       console.error(e);
