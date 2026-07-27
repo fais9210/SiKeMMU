@@ -58,19 +58,15 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
   // Totals
   const totalInAnggaran = rapbmData
     .filter((i) => i.type === 'PENERIMAAN')
-    .reduce((sum, item) => sum + item.jumlahAnggaran, 0);
-
-  const totalInRealita = rapbmData
-    .filter((i) => i.type === 'PENERIMAAN')
-    .reduce((sum, item) => sum + item.realita, 0);
+    .reduce((sum, item) => sum + (item.jumlahAnggaran || item.realita || 0), 0);
 
   const totalOutAnggaran = rapbmData
     .filter((i) => i.type === 'PENGELUARAN')
-    .reduce((sum, item) => sum + item.jumlahAnggaran, 0);
+    .reduce((sum, item) => sum + (item.jumlahAnggaran || 0), 0);
 
   const totalOutRealita = rapbmData
     .filter((i) => i.type === 'PENGELUARAN')
-    .reduce((sum, item) => sum + item.realita, 0);
+    .reduce((sum, item) => sum + (item.realita || 0), 0);
 
   const totalPercentage = Math.round((totalOutRealita / (totalOutAnggaran || 1)) * 100);
 
@@ -410,7 +406,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                 <td colSpan={2} className="py-3 px-3 text-center border-r border-slate-700">TOTAL</td>
                 <td className="py-3 px-3 border-r border-slate-700">JUMLAH PENERIMAAN</td>
                 <td className="py-3 px-3 text-right border-r border-slate-700 text-emerald-300 text-sm">
-                  {formatCurrency(totalInRealita)}
+                  {formatCurrency(totalInAnggaran)}
                 </td>
 
                 <td colSpan={2} className="py-3 px-3 text-center border-r border-slate-700">TOTAL</td>

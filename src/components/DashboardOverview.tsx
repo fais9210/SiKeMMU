@@ -59,17 +59,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   // Compute totals
   let totalTargetPenerimaan = 0;
-  let totalRealitaPenerimaan = 0;
   let totalTargetPengeluaran = 0;
   let totalRealitaPengeluaran = 0;
 
   rapbmData.forEach((item) => {
     if (item.type === 'PENERIMAAN') {
-      totalTargetPenerimaan += item.jumlahAnggaran;
-      totalRealitaPenerimaan += item.realita;
+      totalTargetPenerimaan += (item.jumlahAnggaran || item.realita || 0);
     } else {
-      totalTargetPengeluaran += item.jumlahAnggaran;
-      totalRealitaPengeluaran += item.realita;
+      totalTargetPengeluaran += (item.jumlahAnggaran || 0);
+      totalRealitaPengeluaran += (item.realita || 0);
     }
   });
 
@@ -83,9 +81,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     }
   });
 
-  const totalIncome = totalRealitaPenerimaan + totalTrxIn;
-  const totalExpense = totalRealitaPengeluaran + totalTrxOut;
-  const sisaKas = totalIncome - totalExpense;
+  const totalPenerimaan = totalTargetPenerimaan + totalTrxIn;
+  const totalRealisasiPengeluaran = totalRealitaPengeluaran + totalTrxOut;
+  const sisaKas = totalPenerimaan - totalRealisasiPengeluaran;
   const serapanPercentage = Math.round((totalRealitaPengeluaran / (totalTargetPengeluaran || 1)) * 100);
 
   // Recharts Data Prep: Categories comparison
@@ -213,8 +211,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             {formatCurrency(sisaKas)}
           </p>
           <div className="mt-2 text-[10px] text-slate-500 font-medium flex items-center justify-between">
-            <span className="text-emerald-600 font-bold">In: {formatCurrency(totalIncome)}</span>
-            <span className="text-rose-600 font-bold">Out: {formatCurrency(totalExpense)}</span>
+            <span className="text-emerald-600 font-bold">In: {formatCurrency(totalPenerimaan)}</span>
+            <span className="text-rose-600 font-bold">Out: {formatCurrency(totalRealisasiPengeluaran)}</span>
           </div>
         </div>
 
