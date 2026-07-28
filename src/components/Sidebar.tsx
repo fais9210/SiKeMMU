@@ -88,7 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, unpai
       {/* Sidebar */}
       <aside
         id="main-sidebar"
-        className={`fixed md:relative inset-y-0 left-0 z-50 md:z-10 w-64 bg-emerald-900 text-white flex-shrink-0 border-r border-emerald-800 flex flex-col justify-between transform transition-all duration-300 ease-in-out ${
+        className={`fixed md:relative inset-y-0 left-0 z-50 md:z-10 w-72 max-w-[85vw] md:w-64 bg-emerald-900 text-white flex-shrink-0 border-r border-emerald-800 flex flex-col justify-between transform transition-all duration-300 ease-in-out ${
           isOpen ? 'translate-x-0 block' : '-translate-x-full md:-ml-64 md:opacity-0 hidden md:block'
         }`}
       >

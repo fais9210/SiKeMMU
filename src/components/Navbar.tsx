@@ -48,15 +48,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header id="main-navbar" className="bg-emerald-900 text-white border-b border-emerald-800 sticky top-0 z-30 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           
           {/* Left Title & Brand */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 min-w-0 w-full md:w-auto">
             {onToggleSidebar && (
               <button
                 onClick={onToggleSidebar}
-                className={`p-1.5 -ml-1.5 rounded-lg text-emerald-300 hover:bg-emerald-800 hover:text-white transition-colors ${
+                className={`p-2 -ml-1.5 rounded-lg text-emerald-300 hover:bg-emerald-800 hover:text-white transition-colors flex-shrink-0 ${
                   isSidebarOpen ? 'bg-emerald-800/80 text-amber-300' : ''
                 }`}
                 title={isSidebarOpen ? "Sembunyikan Menu Navigasi" : "Tampilkan Menu Navigasi"}
@@ -71,29 +71,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Building2 className="w-5 h-5" />
               )}
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="font-bold text-base leading-tight tracking-wide text-amber-100">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center space-x-2 flex-wrap">
+                <h1 className="font-bold text-sm sm:text-base leading-tight tracking-wide text-amber-100 truncate max-w-[200px] sm:max-w-none">
                   {madrasah.namaMadrasah}
                 </h1>
-                <span className="bg-amber-400 text-emerald-950 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                <span className="bg-amber-400 text-emerald-950 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex-shrink-0">
                   RAPBM {selectedYear}
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-300/90">
+              <p className="text-[10px] sm:text-[11px] text-emerald-300/90 truncate">
                 {madrasah.alamat}, Kec. {madrasah.kecamatan}, Kab. {madrasah.kabupaten}
               </p>
             </div>
           </div>
 
           {/* Center/Right Status Indicators & Actions */}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs w-full md:w-auto justify-between sm:justify-end">
             
             {/* YEAR SELECTOR DROPDOWN */}
-            <div id="year-selector-badge" className="flex items-center space-x-2 bg-emerald-950/90 px-3 py-1 rounded-lg border border-emerald-700 text-amber-100 shadow-sm">
-              <Calendar className="w-4 h-4 text-amber-400" />
-              <div className="flex flex-col">
-                <span className="text-[9px] uppercase font-bold text-emerald-400 tracking-wider">Pilih Tahun RAPBM</span>
+            <div id="year-selector-badge" className="flex items-center space-x-2 bg-emerald-950/90 px-2.5 sm:px-3 py-1 rounded-lg border border-emerald-700 text-amber-100 shadow-sm flex-1 sm:flex-initial min-w-[130px]">
+              <Calendar className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <div className="flex flex-col min-w-0 w-full">
+                <span className="text-[9px] uppercase font-bold text-emerald-400 tracking-wider truncate">Tahun RAPBM</span>
                 <select
                   id="navbar-year-select"
                   value={selectedYear}
@@ -104,7 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onSelectYear(e.target.value);
                     }
                   }}
-                  className="bg-transparent font-bold text-xs text-amber-200 focus:outline-none cursor-pointer pr-1"
+                  className="bg-transparent font-bold text-xs text-amber-200 focus:outline-none cursor-pointer pr-1 w-full truncate"
                 >
                   {availableYears.map((y) => (
                     <option key={y} value={y} className="bg-emerald-900 text-white font-medium">
@@ -119,8 +119,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Hijri Date Badge */}
-            <div id="hijri-date-badge" className="flex items-center space-x-2 bg-emerald-950/80 px-3 py-1 rounded-lg border border-emerald-700/60 text-emerald-200">
-              <Moon className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <div id="hijri-date-badge" className="hidden sm:flex items-center space-x-2 bg-emerald-950/80 px-3 py-1 rounded-lg border border-emerald-700/60 text-emerald-200">
+              <Moon className="w-3.5 h-3.5 text-amber-400 animate-pulse flex-shrink-0" />
               <div>
                 <span className="text-[9px] text-emerald-400 block uppercase font-bold">Hari Ini</span>
                 <span className="font-bold text-xs text-amber-200">{currentHijri.formatted}</span>
@@ -128,8 +128,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Sisa Kas Pill */}
-            <div id="sisa-kas-badge" className="flex items-center space-x-2 bg-emerald-950/80 px-3 py-1 rounded-lg border border-emerald-700/60 text-emerald-200">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+            <div id="sisa-kas-badge" className="flex items-center space-x-2 bg-emerald-950/80 px-2.5 sm:px-3 py-1 rounded-lg border border-emerald-700/60 text-emerald-200 flex-1 sm:flex-initial">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
               <div>
                 <span className="text-[9px] text-emerald-400 block uppercase font-bold">Sisa Kas</span>
                 <span className={`font-bold text-xs ${sisaKas >= 0 ? 'text-emerald-300' : 'text-rose-400'}`}>
@@ -139,7 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center space-x-1 ml-auto md:ml-0">
+            <div className="flex items-center space-x-1.5 ml-auto sm:ml-0">
               <button
                 id="btn-sync-refresh"
                 onClick={onRefreshData}

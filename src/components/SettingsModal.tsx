@@ -66,8 +66,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ madrasah, onSave, 
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-8">
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-slate-200 space-y-5 my-auto">
         
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center space-x-2 text-emerald-800 font-bold text-base">

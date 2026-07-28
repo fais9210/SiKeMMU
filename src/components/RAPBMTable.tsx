@@ -202,6 +202,13 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
 
       {/* Main Grid Table matching scanned document */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        {/* Mobile horizontal scroll hint */}
+        <div className="lg:hidden flex items-center justify-between px-3.5 py-2 bg-amber-50 text-amber-900 text-[11px] font-semibold border-b border-amber-200/80">
+          <span className="flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+            <span>Geser tabel ke kanan/kiri untuk melihat seluruh kolom Penerimaan & Pengeluaran</span>
+          </span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse min-w-[1000px]">
             <colgroup>

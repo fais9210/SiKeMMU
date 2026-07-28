@@ -232,8 +232,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onExportPDF 
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-base">{editingId ? 'Edit Inventaris' : 'Tambah Inventaris'}</h3>
               <button onClick={resetForm} className="text-slate-400 hover:text-slate-600">&times;</button>
