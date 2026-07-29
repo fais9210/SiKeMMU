@@ -1,7 +1,7 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
-    const serverModule = await import('../dist/server.cjs');
-    const handlerFn = serverModule.default?.default || serverModule.default || serverModule;
+    const serverModule = require('../dist/server.cjs');
+    const handlerFn = serverModule.default || serverModule;
 
     if (typeof handlerFn !== 'function') {
       res.statusCode = 500;
@@ -15,4 +15,4 @@ export default async function handler(req, res) {
     res.statusCode = 500;
     res.end('Internal Server Error');
   }
-}
+};
