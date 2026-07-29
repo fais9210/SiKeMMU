@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { getHijriDate } from './src/utils/hijri';
 import { requireAuth, AuthRequest } from './src/middleware/auth';
@@ -8,9 +9,9 @@ import { settings, rapbmItems, transactions, teachers, payrollRecords, inventory
 import { eq, desc } from 'drizzle-orm';
 import { initialMadrasahInfo, initialRAPBMData } from './src/data/initialData';
 
-async function startServer() {
+export async function createApp() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -481,9 +482,28 @@ async function startServer() {
     });
   }
   
+  return app;
+}
+
+export async function startServer() {
+  const app = await createApp();
+  const PORT = Number(process.env.PORT) || 3000;
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Madrasah Finance Server] Running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) {
+  startServer();
+}
+
+export default async function handler(req: any, res: any) {
+  const app = await createApp();
+  return app.handle(req, res, (err: unknown) => {
+    if (err) {
+      res.statusCode = 500;
+      res.end('Internal Server Error');
+    }
+  });
+}
