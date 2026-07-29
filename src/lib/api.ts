@@ -1,14 +1,6 @@
-import { auth } from './firebase';
-
 export async function apiFetch(url: string, options: RequestInit = {}) {
-  let token = '';
-  if (auth.currentUser) {
-    token = await auth.currentUser.getIdToken();
-  }
-
   const headers = {
     ...options.headers,
-    'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json',
   };
 

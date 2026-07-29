@@ -1,8 +1,7 @@
 import React from 'react';
-import { Calendar, DollarSign, Download, Moon, RefreshCw, SlidersHorizontal, Building2, Menu, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Calendar, DollarSign, Download, Moon, RefreshCw, SlidersHorizontal, Building2, Menu } from 'lucide-react';
 import { MadrasahInfo } from '../types';
 import { getHijriDate, formatCurrency } from '../utils/hijri';
-import { User } from 'firebase/auth';
 
 interface NavbarProps {
   madrasah: MadrasahInfo;
@@ -19,9 +18,6 @@ interface NavbarProps {
   onRefreshData: () => void;
   isSidebarOpen?: boolean;
   onToggleSidebar?: () => void;
-  user?: User | null;
-  onLogin?: () => void;
-  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -39,9 +35,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRefreshData,
   isSidebarOpen,
   onToggleSidebar,
-  user,
-  onLogin,
-  onLogout,
 }) => {
   const currentHijri = getHijriDate(new Date(), madrasah.hijriOffsetDays);
   const sisaKas = totalIncome - totalExpense;
@@ -168,36 +161,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <SlidersHorizontal className="w-3.5 h-3.5" />
               </button>
 
-              {user ? (
-                <div className="flex items-center space-x-2 bg-emerald-950/80 px-2 py-1 rounded-md border border-emerald-700/60 text-emerald-100">
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt={user.displayName || 'User'} className="w-5 h-5 rounded-full" />
-                  ) : (
-                    <UserIcon className="w-4 h-4 text-emerald-300" />
-                  )}
-                  <span className="hidden lg:inline text-[11px] font-medium max-w-[100px] truncate">{user.displayName || user.email}</span>
-                  {onLogout && (
-                    <button
-                      onClick={onLogout}
-                      title="Keluar / Logout"
-                      className="p-1 text-rose-300 hover:text-rose-100 hover:bg-emerald-800 rounded transition"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              ) : (
-                onLogin && (
-                  <button
-                    onClick={onLogin}
-                    className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-medium text-xs rounded-md border border-emerald-600 transition flex items-center space-x-1"
-                    title="Masuk dengan akun Google (Opsional)"
-                  >
-                    <LogIn className="w-3.5 h-3.5 text-amber-300" />
-                    <span className="hidden sm:inline">Google Auth</span>
-                  </button>
-                )
-              )}
             </div>
 
           </div>

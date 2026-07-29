@@ -1,6 +1,4 @@
 import { apiFetch } from "./lib/api";
-import { auth, loginWithGoogle, logout } from "./lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar, ActiveTab } from './components/Sidebar';
@@ -40,17 +38,6 @@ import { AddYearModal } from './components/AddYearModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
@@ -104,7 +91,7 @@ export default function App() {
 
   useEffect(() => {
     fetchBackendData();
-  }, [user]);
+  }, []);
 
   // Filter RAPBM for current selected year
   const currentYearRapbm = rapbmData.filter(
@@ -474,9 +461,6 @@ export default function App() {
         onRefreshData={fetchBackendData}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        user={user}
-        onLogin={loginWithGoogle}
-        onLogout={logout}
       />
 
       <AddYearModal
