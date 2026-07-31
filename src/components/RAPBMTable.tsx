@@ -9,6 +9,8 @@ import {
   Info,
   CheckCircle2,
   SlidersHorizontal,
+  PlusCircle,
+  Trash2,
 } from 'lucide-react';
 import { MadrasahInfo, RAPBMItem } from '../types';
 import { formatCurrency, formatNumber, getHijriDate } from '../utils/hijri';
@@ -116,6 +118,8 @@ interface RAPBMTableProps {
   onAddNewYear: (newYear: string) => void;
   rapbmData: RAPBMItem[];
   onUpdateItem: (id: string, jumlahAnggaran: number, realita: number, uraian?: string) => Promise<void>;
+  onAddItem?: (item: Omit<RAPBMItem, 'id'>) => Promise<void>;
+  onDeleteItem?: (id: string) => Promise<void>;
   onExportPDF: (customTanggal?: string) => void;
 }
 
@@ -127,6 +131,8 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
   onAddNewYear,
   rapbmData,
   onUpdateItem,
+  onAddItem,
+  onDeleteItem,
   onExportPDF,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -136,6 +142,49 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
   const [editAnggaran, setEditAnggaran] = useState<number>(0);
   const [editRealita, setEditRealita] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal Add Item RAPBM State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'PENERIMAAN' | 'PENGELUARAN'>('PENERIMAAN');
+  const [newKode, setNewKode] = useState('');
+  const [newUraian, setNewUraian] = useState('');
+  const [newAnggaran, setNewAnggaran] = useState<number | ''>('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSubmittingNew, setIsSubmittingNew] = useState(false);
+
+  const openAddItemModal = (type: 'PENERIMAAN' | 'PENGELUARAN') => {
+    setModalType(type);
+    setNewKode('');
+    setNewUraian('');
+    setNewAnggaran('');
+    setNewCategoryName('');
+    setIsModalOpen(true);
+  };
+
+  const handleCreateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUraian.trim() || !onAddItem) return;
+
+    setIsSubmittingNew(true);
+    try {
+      await onAddItem({
+        tahunAjaran: selectedYear,
+        type: modalType,
+        categoryCode: 'LAIN',
+        categoryName: newCategoryName.trim() || (modalType === 'PENERIMAAN' ? 'PENDAPATAN LAIN' : 'PENGELUARAN LAIN'),
+        noUrut: '1',
+        noKode: newKode.trim() || `${modalType === 'PENERIMAAN' ? 'P' : 'K'}-${rapbmData.length + 1}`,
+        uraian: newUraian.trim(),
+        jumlahAnggaran: Number(newAnggaran) || 0,
+        realita: 0,
+        persentase: 100,
+      });
+
+      setIsModalOpen(false);
+    } finally {
+      setIsSubmittingNew(false);
+    }
+  };
 
   // Editable Tanggal Pengesahan - Defaults to today's date format
   const defaultTanggalPengesahan = `${madrasah.kabupaten || 'Pasuruan'}, ${getHijriDate(new Date(), madrasah.hijriOffsetDays).formatted}`;
@@ -353,10 +402,30 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
               {/* Super Header */}
               <tr className="bg-emerald-900 text-white font-bold uppercase tracking-wider text-center">
                 <th colSpan={4} className="py-2.5 px-3 border-r border-emerald-800">
-                  PENERIMAAN
+                  <div className="flex items-center justify-between px-2">
+                    <span>PENERIMAAN</span>
+                    <button
+                      type="button"
+                      onClick={() => openAddItemModal('PENERIMAAN')}
+                      className="text-xs bg-emerald-700 hover:bg-emerald-600 px-2.5 py-1 rounded-lg text-white font-medium flex items-center space-x-1 transition cursor-pointer normal-case"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>+ Tambah Item Penerimaan</span>
+                    </button>
+                  </div>
                 </th>
                 <th colSpan={6} className="py-2.5 px-3">
-                  PENGELUARAN
+                  <div className="flex items-center justify-between px-2">
+                    <span>PENGELUARAN</span>
+                    <button
+                      type="button"
+                      onClick={() => openAddItemModal('PENGELUARAN')}
+                      className="text-xs bg-emerald-700 hover:bg-emerald-600 px-2.5 py-1 rounded-lg text-white font-medium flex items-center space-x-1 transition cursor-pointer normal-case"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>+ Tambah Item Pengeluaran</span>
+                    </button>
+                  </div>
                 </th>
               </tr>
               {/* Sub Header */}
@@ -693,6 +762,127 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Add New RAPBM Item Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="font-bold text-base text-slate-900">
+                  Tambah Item {modalType === 'PENERIMAAN' ? 'Penerimaan' : 'Pengeluaran'} RAPBM
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Tahun Ajaran Aktif: <span className="font-bold text-emerald-700">TA {selectedYear}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateItem} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Jenis Item RAPBM</label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setModalType('PENERIMAAN')}
+                    className={`py-1.5 rounded-lg text-xs transition ${
+                      modalType === 'PENERIMAAN' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'
+                    }`}
+                  >
+                    Penerimaan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalType('PENGELUARAN')}
+                    className={`py-1.5 rounded-lg text-xs transition ${
+                      modalType === 'PENGELUARAN' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600'
+                    }`}
+                  >
+                    Pengeluaran
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Nomor / Kode RAPBM (Opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder={modalType === 'PENERIMAAN' ? 'misal: 6.4 atau 7.1' : 'misal: 5.7 atau 6.1'}
+                  value={newKode}
+                  onChange={(e) => setNewKode(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Kategori Group (Opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="misal: PENDAPATAN LAIN, KEGIATAN SISWA"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Nama / Uraian Anggaran *
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Deskripsi detail item penerimaan atau pengeluaran..."
+                  value={newUraian}
+                  onChange={(e) => setNewUraian(e.target.value)}
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Rencana Jumlah Anggaran (Rp)
+                </label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={newAnggaran}
+                  onChange={(e) => setNewAnggaran(e.target.value ? Number(e.target.value) : '')}
+                  min={0}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-100 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingNew || !newUraian.trim()}
+                  className="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-800 transition shadow-sm disabled:opacity-50"
+                >
+                  {isSubmittingNew ? 'Menyimpan...' : 'Simpan Item RAPBM'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

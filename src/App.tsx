@@ -230,6 +230,33 @@ export default function App() {
     }
   };
 
+  const handleAddRapbmItem = async (newItemData: Omit<RAPBMItem, 'id'>) => {
+    const createdItem: RAPBMItem = {
+      id: `rapbm-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      ...newItemData,
+    };
+    setRapbmData((prev) => [...prev, createdItem]);
+
+    try {
+      await apiFetch('/api/rapbm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createdItem),
+      });
+    } catch (e) {
+      console.error('Error adding RAPBM item:', e);
+    }
+  };
+
+  const handleDeleteRapbmItem = async (id: string) => {
+    setRapbmData((prev) => prev.filter((item) => item.id !== id));
+    try {
+      await apiFetch(`/api/rapbm/${id}`, { method: 'DELETE' });
+    } catch (e) {
+      console.error('Error deleting RAPBM item:', e);
+    }
+  };
+
   const handleAddTransaction = async (trxData: Omit<Transaction, 'id'>) => {
     const newTrx: Transaction = {
       id: `trx-${Date.now()}`,
@@ -654,6 +681,8 @@ export default function App() {
               onAddNewYear={() => setIsAddYearModalOpen(true)}
               rapbmData={currentYearRapbm}
               onUpdateItem={handleUpdateRAPBMItem}
+              onAddItem={handleAddRapbmItem}
+              onDeleteItem={handleDeleteRapbmItem}
               onExportPDF={handleExportRAPBMPDF}
             />
           )}
@@ -682,6 +711,7 @@ export default function App() {
               rapbmData={currentYearRapbm}
               onAddTransaction={handleAddTransaction}
               onDeleteTransaction={handleDeleteTransaction}
+              onAddRapbmItem={handleAddRapbmItem}
               onExportCashflowPDF={handleExportCashflowPDF}
               isOpenModal={isNewTrxModalOpen}
               setIsOpenModal={setIsNewTrxModalOpen}

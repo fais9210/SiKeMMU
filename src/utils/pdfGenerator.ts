@@ -138,7 +138,12 @@ export function generateRAPBMPDF(
   doc.setFont('helvetica', 'normal');
 
   // Date top right of signature
-  const dateText = hijriDateStr.includes(',') ? hijriDateStr : `${madrasah.kabupaten || 'Pasuruan'}, ${hijriDateStr}`;
+  const safeHijriStr = typeof hijriDateStr === 'string'
+    ? hijriDateStr
+    : (hijriDateStr && typeof hijriDateStr === 'object' && 'formatted' in hijriDateStr
+        ? String((hijriDateStr as any).formatted)
+        : String(hijriDateStr || ''));
+  const dateText = safeHijriStr.includes(',') ? safeHijriStr : `${madrasah.kabupaten || 'Pasuruan'}, ${safeHijriStr}`;
   doc.text(dateText, 220, sigY);
 
   doc.text('Mengetahui,', 20, sigY + 5);
@@ -333,8 +338,14 @@ export function generateCashFlowPDF(
 
   const finalY = (doc as any).lastAutoTable.finalY + 12;
 
+  const safeHijriStr = typeof hijriDateStr === 'string'
+    ? hijriDateStr
+    : (hijriDateStr && typeof hijriDateStr === 'object' && 'formatted' in hijriDateStr
+        ? String((hijriDateStr as any).formatted)
+        : String(hijriDateStr || ''));
+
   doc.setFontSize(9);
-  doc.text(`Karangmenggah, ${hijriDateStr}`, 140, finalY);
+  doc.text(`Karangmenggah, ${safeHijriStr}`, 140, finalY);
 
   doc.text('Mengetahui,', 20, finalY + 5);
   doc.text('Kepala Madrasah', 20, finalY + 10);
@@ -407,8 +418,14 @@ export function generateInventoryPDF(
   doc.setLineWidth(0.5);
   doc.line(20, finalY + 46, 60, finalY + 46);
 
+  const safeHijriStr = typeof hijriDateStr === 'string'
+    ? hijriDateStr
+    : (hijriDateStr && typeof hijriDateStr === 'object' && 'formatted' in hijriDateStr
+        ? String((hijriDateStr as any).formatted)
+        : String(hijriDateStr || ''));
+
   doc.setFont('helvetica', 'normal');
-  doc.text(`Karangmenggah, ${hijriDateStr}`, 170, finalY + 15, { align: 'center' });
+  doc.text(`Karangmenggah, ${safeHijriStr}`, 170, finalY + 15, { align: 'center' });
   doc.setFont('helvetica', 'bold');
   doc.text('Pengurus Madrasah', 170, finalY + 20, { align: 'center' });
   doc.text(madrasah.pengurusName, 170, finalY + 45, { align: 'center' });

@@ -208,15 +208,15 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
     const term = searchTerm.trim().toLowerCase();
     const matchSearch =
       !term ||
-      p.teacherName.toLowerCase().includes(term) ||
-      p.nipNu.toLowerCase().includes(term) ||
-      p.role.toLowerCase().includes(term) ||
-      p.monthHijri.toLowerCase().includes(term) ||
-      p.monthGregorian.toLowerCase().includes(term) ||
-      p.dateGeneratedHijri.toLowerCase().includes(term) ||
-      p.dateGeneratedGregorian.toLowerCase().includes(term) ||
-      (p.tahunAjaran && p.tahunAjaran.toLowerCase().includes(term)) ||
-      (p.notes && p.notes.toLowerCase().includes(term));
+      (p.teacherName || '').toLowerCase().includes(term) ||
+      (p.nipNu || '').toLowerCase().includes(term) ||
+      (p.role || '').toLowerCase().includes(term) ||
+      (p.monthHijri || '').toLowerCase().includes(term) ||
+      (p.monthGregorian || '').toLowerCase().includes(term) ||
+      (p.dateGeneratedHijri || '').toLowerCase().includes(term) ||
+      (p.dateGeneratedGregorian || '').toLowerCase().includes(term) ||
+      (p.tahunAjaran && String(p.tahunAjaran).toLowerCase().includes(term)) ||
+      (p.notes && String(p.notes).toLowerCase().includes(term));
 
     return matchYear && matchMonth && matchSearch;
   });

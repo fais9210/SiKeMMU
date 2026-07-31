@@ -122,6 +122,32 @@ async function startServer() {
     }
   });
 
+  app.post('/api/rapbm', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const newItem = req.body;
+      const existing = await db.select().from(rapbmItems).where(eq(rapbmItems.id, newItem.id));
+      if (existing.length > 0) {
+        await db.update(rapbmItems).set(newItem).where(eq(rapbmItems.id, newItem.id));
+        return res.json(newItem);
+      }
+      const created = await db.insert(rapbmItems).values(newItem).returning();
+      res.json(created[0] || newItem);
+    } catch (error) {
+      console.error('Error adding rapbm item:', error);
+      res.status(500).json({ error: 'Failed to create rapbm item' });
+    }
+  });
+
+  app.delete('/api/rapbm/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await db.delete(rapbmItems).where(eq(rapbmItems.id, id as string));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete rapbm item' });
+    }
+  });
+
   app.put('/api/rapbm/:id', requireAuth, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;

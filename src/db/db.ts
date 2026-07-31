@@ -18,11 +18,18 @@ export const createPool = () => {
       password: process.env.SQL_PASSWORD,
       database: process.env.SQL_DB_NAME,
       max: 10,
+      idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 15000,
+      keepAlive: true,
     });
 
     global._postgresPool.on('error', (err) => {
-      console.error('Unexpected error on idle SQL pool client:', err);
+      // Gracefully handle idle connection drops/resets from PostgreSQL proxy or cloud host
+      if (err.message && err.message.includes('Connection terminated unexpectedly')) {
+        console.warn('Idle PostgreSQL connection closed by server, client recycled automatically.');
+      } else {
+        console.warn('PostgreSQL pool background notification:', err.message || err);
+      }
     });
   }
   return global._postgresPool;
