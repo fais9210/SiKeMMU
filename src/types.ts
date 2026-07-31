@@ -105,3 +105,29 @@ export interface InventoryItem {
   acquisitionDate?: string;
   notes?: string;
 }
+
+export interface Student {
+  id: string;
+  name: string;
+  gender: 'L' | 'P';
+  kelas: string;
+  ranting?: string;
+  age?: number;
+  status?: 'AKTIF' | 'NONAKTIF';
+}
+
+export interface StudentPayment {
+  id: string;
+  studentId: string;
+  studentName: string;
+  tahunAjaran: string;
+  kelas: string;
+  type: 'SYAHRIYAH' | 'IMDA' | 'IMNI';
+  amount: number;
+  dateGregorian: string;
+  dateHijri: string;
+  monthPeriod?: string;
+  recordedBy?: string;
+  notes?: string;
+}
+

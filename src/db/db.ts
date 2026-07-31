@@ -11,26 +11,15 @@ declare global {
 
 export const createPool = () => {
   if (!global._postgresPool) {
-    const connectionString = process.env.DATABASE_URL;
-
-    global._postgresPool = new Pool(
-      connectionString
-        ? {
-            connectionString,
-            ssl: { rejectUnauthorized: false },
-            max: 10,
-            connectionTimeoutMillis: 15000,
-          }
-        : {
-            host: process.env.SQL_HOST,
-            port: process.env.SQL_PORT ? Number(process.env.SQL_PORT) : 5432,
-            user: process.env.SQL_USER,
-            password: process.env.SQL_PASSWORD,
-            database: process.env.SQL_DB_NAME,
-            max: 10,
-            connectionTimeoutMillis: 15000,
-          }
-    );
+    global._postgresPool = new Pool({
+      host: process.env.SQL_HOST,
+      port: process.env.SQL_PORT ? Number(process.env.SQL_PORT) : 5432,
+      user: process.env.SQL_USER,
+      password: process.env.SQL_PASSWORD,
+      database: process.env.SQL_DB_NAME,
+      max: 10,
+      connectionTimeoutMillis: 15000,
+    });
 
     global._postgresPool.on('error', (err) => {
       console.error('Unexpected error on idle SQL pool client:', err);
@@ -143,6 +132,32 @@ export async function initTables() {
         acquisition_date TEXT,
         notes TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS students (
+        id TEXT PRIMARY KEY,
+        ranting TEXT NOT NULL DEFAULT 'A-22',
+        name TEXT NOT NULL,
+        gender TEXT NOT NULL DEFAULT 'L',
+        age INTEGER NOT NULL DEFAULT 9,
+        kelas TEXT NOT NULL DEFAULT 'Kelas 1',
+        status TEXT NOT NULL DEFAULT 'AKTIF'
+      );
+
+      CREATE TABLE IF NOT EXISTS student_payments (
+        id TEXT PRIMARY KEY,
+        student_id TEXT NOT NULL,
+        student_name TEXT NOT NULL,
+        tahun_ajaran TEXT NOT NULL,
+        kelas TEXT NOT NULL,
+        type TEXT NOT NULL,
+        amount INTEGER NOT NULL DEFAULT 0,
+        date_gregorian TEXT NOT NULL,
+        date_hijri TEXT NOT NULL,
+        month_period TEXT,
+        recorded_by TEXT DEFAULT 'Bendahara',
+        notes TEXT
+      );
+
     `);
     console.log('PostgreSQL tables initialized successfully.');
   } catch (err) {

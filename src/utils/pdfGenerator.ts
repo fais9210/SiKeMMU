@@ -138,7 +138,8 @@ export function generateRAPBMPDF(
   doc.setFont('helvetica', 'normal');
 
   // Date top right of signature
-  doc.text(`Karangmenggah, ${hijriDateStr}`, 220, sigY);
+  const dateText = hijriDateStr.includes(',') ? hijriDateStr : `${madrasah.kabupaten || 'Pasuruan'}, ${hijriDateStr}`;
+  doc.text(dateText, 220, sigY);
 
   doc.text('Mengetahui,', 20, sigY + 5);
   doc.text('Pengurus', 20, sigY + 10);

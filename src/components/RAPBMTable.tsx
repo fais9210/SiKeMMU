@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileSpreadsheet,
   Download,
@@ -6,11 +6,107 @@ import {
   Edit2,
   Check,
   X,
-  RefreshCw,
   Info,
+  CheckCircle2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { MadrasahInfo, RAPBMItem } from '../types';
-import { formatCurrency, formatNumber } from '../utils/hijri';
+import { formatCurrency, formatNumber, getHijriDate } from '../utils/hijri';
+
+interface InlineNumberCellProps {
+  value: number;
+  onSave: (newVal: number) => void;
+  className?: string;
+  isCurrencyColor?: string;
+}
+
+const InlineNumberCell: React.FC<InlineNumberCellProps> = ({
+  value,
+  onSave,
+  className = '',
+  isCurrencyColor = 'text-slate-900',
+}) => {
+  const [val, setVal] = useState<string>(value !== undefined && value !== null ? value.toString() : '0');
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setVal(value !== undefined && value !== null ? value.toString() : '0');
+    }
+  }, [value, isFocused]);
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    const num = Number(val);
+    if (!isNaN(num) && num !== value) {
+      onSave(num);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      value={val}
+      onFocus={() => setIsFocused(true)}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className={`w-full py-1 px-1.5 border border-slate-200 hover:border-emerald-400 focus:border-emerald-500 rounded text-right text-xs bg-slate-50/60 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-semibold transition ${isCurrencyColor} ${className}`}
+    />
+  );
+};
+
+interface InlineTextCellProps {
+  value: string;
+  onSave: (newVal: string) => void;
+  className?: string;
+}
+
+const InlineTextCell: React.FC<InlineTextCellProps> = ({
+  value,
+  onSave,
+  className = '',
+}) => {
+  const [val, setVal] = useState<string>(value || '');
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setVal(value || '');
+    }
+  }, [value, isFocused]);
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    if (val.trim() !== '' && val !== value) {
+      onSave(val.trim());
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      value={val}
+      onFocus={() => setIsFocused(true)}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className={`w-full py-1 px-1.5 border border-slate-200 hover:border-emerald-400 focus:border-emerald-500 rounded text-xs bg-slate-50/60 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium transition ${className}`}
+    />
+  );
+};
 
 interface RAPBMTableProps {
   madrasah: MadrasahInfo;
@@ -20,7 +116,7 @@ interface RAPBMTableProps {
   onAddNewYear: (newYear: string) => void;
   rapbmData: RAPBMItem[];
   onUpdateItem: (id: string, jumlahAnggaran: number, realita: number, uraian?: string) => Promise<void>;
-  onExportPDF: () => void;
+  onExportPDF: (customTanggal?: string) => void;
 }
 
 export const RAPBMTable: React.FC<RAPBMTableProps> = ({
@@ -34,11 +130,19 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
   onExportPDF,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [directEditMode, setDirectEditMode] = useState<boolean>(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editUraian, setEditUraian] = useState<string>('');
   const [editAnggaran, setEditAnggaran] = useState<number>(0);
   const [editRealita, setEditRealita] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Editable Tanggal Pengesahan - Defaults to today's date format
+  const defaultTanggalPengesahan = `${madrasah.kabupaten || 'Pasuruan'}, ${getHijriDate(new Date(), madrasah.hijriOffsetDays).formatted}`;
+  const [tanggalPengesahan, setTanggalPengesahan] = useState<string>(() => {
+    return localStorage.getItem('rapbm_tanggal_pengesahan') || defaultTanggalPengesahan;
+  });
+  const [isEditingTanggal, setIsEditingTanggal] = useState(false);
 
   const sortByKode = (a: RAPBMItem, b: RAPBMItem) => {
     const catComp = (a.categoryCode || '').localeCompare(b.categoryCode || '', undefined, { numeric: true });
@@ -115,7 +219,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
           <div className="flex items-center space-x-2">
             <button
               id="btn-export-rapbm-pdf-main"
-              onClick={onExportPDF}
+              onClick={() => onExportPDF(tanggalPengesahan)}
               className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-sm transition flex items-center space-x-2 text-xs"
             >
               <Download className="w-4 h-4" />
@@ -193,9 +297,28 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
             />
           </div>
 
-          <div className="text-xs text-slate-500 flex items-center space-x-2">
-            <Info className="w-4 h-4 text-emerald-600" />
-            <span>Klik ikon pensil <Edit2 className="w-3 h-3 inline text-slate-400" /> pada baris untuk mengubah nilai Anggaran / Realita</span>
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <button
+              type="button"
+              onClick={() => setDirectEditMode(!directEditMode)}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1.5 transition cursor-pointer border ${
+                directEditMode
+                  ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                  : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>{directEditMode ? 'Mode Edit Langsung: AKTIF' : 'Mode Edit Langsung: NONAKTIF'}</span>
+            </button>
+
+            <span className="text-slate-500 hidden md:flex items-center space-x-1">
+              <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>
+                {directEditMode
+                  ? 'Ubah angka/uraian secara langsung pada tabel, tersimpan otomatis saat Enter atau pindah kolom.'
+                  : 'Klik ikon pensil atau sel untuk mengedit data.'}
+              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -268,9 +391,14 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     <td className="py-2.5 px-2 text-center text-slate-600 border-r font-mono whitespace-nowrap">
                       {p ? p.noKode : ''}
                     </td>
-                    <td className="py-2.5 px-3 border-r font-medium leading-relaxed">
+                    <td className="py-2 px-2 border-r font-medium leading-relaxed">
                       {p ? (
-                        editingId === p.id ? (
+                        directEditMode ? (
+                          <InlineTextCell
+                            value={p.uraian}
+                            onSave={(val) => onUpdateItem(p.id, p.jumlahAnggaran, p.realita, val)}
+                          />
+                        ) : editingId === p.id ? (
                           <textarea
                             rows={2}
                             value={editUraian}
@@ -279,10 +407,14 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                             placeholder="Uraian penerimaan"
                           />
                         ) : (
-                          <div className="flex items-start justify-between group gap-2">
+                          <div
+                            onClick={() => startEdit(p)}
+                            className="flex items-start justify-between group gap-2 cursor-pointer hover:text-emerald-700 py-0.5 px-1"
+                          >
                             <span className="whitespace-normal break-words">{p.uraian}</span>
                             <button
-                              onClick={() => startEdit(p)}
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); startEdit(p); }}
                               title="Edit Penerimaan"
                               className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition text-slate-500 flex-shrink-0 mt-0.5"
                             >
@@ -292,9 +424,15 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                         )
                       ) : ''}
                     </td>
-                    <td className="py-2.5 px-3 text-right border-r font-semibold text-emerald-800 whitespace-nowrap">
+                    <td className="py-2 px-2 text-right border-r font-semibold text-emerald-800 whitespace-nowrap">
                       {p ? (
-                        editingId === p.id ? (
+                        directEditMode ? (
+                          <InlineNumberCell
+                            value={p.jumlahAnggaran}
+                            isCurrencyColor="text-emerald-800"
+                            onSave={(val) => onUpdateItem(p.id, val, p.realita, p.uraian)}
+                          />
+                        ) : editingId === p.id ? (
                           <div className="flex items-center space-x-1 justify-end">
                             <input
                               type="number"
@@ -303,24 +441,28 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                               className="w-24 p-1 border border-emerald-400 rounded text-right text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
                             <button
+                              type="button"
                               onClick={() => handleSave(p.id)}
                               disabled={isSubmitting}
                               title="Simpan"
-                              className="p-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition flex-shrink-0 shadow-xs"
+                              className="p-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition flex-shrink-0 shadow-xs cursor-pointer"
                             >
                               <Check className="w-3 h-3" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => setEditingId(null)}
                               disabled={isSubmitting}
                               title="Batal"
-                              className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded transition flex-shrink-0 shadow-xs"
+                              className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded transition flex-shrink-0 shadow-xs cursor-pointer"
                             >
                               <X className="w-3 h-3" />
                             </button>
                           </div>
                         ) : (
-                          formatNumber(p.jumlahAnggaran)
+                          <div onClick={() => startEdit(p)} className="cursor-pointer hover:text-emerald-900 py-0.5 px-1">
+                            {formatNumber(p.jumlahAnggaran)}
+                          </div>
                         )
                       ) : ''}
                     </td>
@@ -332,9 +474,14 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     <td className="py-2.5 px-2 text-center text-slate-600 border-r font-mono whitespace-nowrap">
                       {k ? k.noKode : ''}
                     </td>
-                    <td className="py-2.5 px-3 border-r font-medium leading-relaxed">
+                    <td className="py-2 px-2 border-r font-medium leading-relaxed">
                       {k ? (
-                        editingId === k.id ? (
+                        directEditMode ? (
+                          <InlineTextCell
+                            value={k.uraian}
+                            onSave={(val) => onUpdateItem(k.id, k.jumlahAnggaran, k.realita, val)}
+                          />
+                        ) : editingId === k.id ? (
                           <textarea
                             rows={2}
                             value={editUraian}
@@ -343,10 +490,14 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                             placeholder="Uraian pengeluaran"
                           />
                         ) : (
-                          <div className="flex items-start justify-between group gap-2">
+                          <div
+                            onClick={() => startEdit(k)}
+                            className="flex items-start justify-between group gap-2 cursor-pointer hover:text-emerald-700 py-0.5 px-1"
+                          >
                             <span className="whitespace-normal break-words">{k.uraian}</span>
                             <button
-                              onClick={() => startEdit(k)}
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); startEdit(k); }}
                               title="Edit Pengeluaran"
                               className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition text-slate-500 flex-shrink-0 mt-0.5"
                             >
@@ -357,9 +508,14 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                       ) : ''}
                     </td>
 
-                    <td className="py-2 px-3 text-right border-r font-semibold">
+                    <td className="py-2 px-2 text-right border-r font-semibold">
                       {k ? (
-                        editingId === k.id ? (
+                        directEditMode ? (
+                          <InlineNumberCell
+                            value={k.jumlahAnggaran}
+                            onSave={(val) => onUpdateItem(k.id, val, k.realita, k.uraian)}
+                          />
+                        ) : editingId === k.id ? (
                           <input
                             type="number"
                             value={editAnggaran}
@@ -367,14 +523,22 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                             className="w-20 p-1 border border-slate-300 rounded text-right text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 block ml-auto"
                           />
                         ) : (
-                          formatNumber(k.jumlahAnggaran)
+                          <div onClick={() => startEdit(k)} className="cursor-pointer hover:text-emerald-900 py-0.5 px-1">
+                            {formatNumber(k.jumlahAnggaran)}
+                          </div>
                         )
                       ) : ''}
                     </td>
 
-                    <td className="py-2 px-3 text-right border-r font-semibold text-amber-700">
+                    <td className="py-2 px-2 text-right border-r font-semibold text-amber-700">
                       {k ? (
-                        editingId === k.id ? (
+                        directEditMode ? (
+                          <InlineNumberCell
+                            value={k.realita}
+                            isCurrencyColor="text-amber-700"
+                            onSave={(val) => onUpdateItem(k.id, k.jumlahAnggaran, val, k.uraian)}
+                          />
+                        ) : editingId === k.id ? (
                           <div className="flex items-center space-x-1 justify-end">
                             <input
                               type="number"
@@ -383,24 +547,28 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                               className="w-20 p-1 border border-amber-400 rounded text-right text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
                             <button
+                              type="button"
                               onClick={() => handleSave(k.id)}
                               disabled={isSubmitting}
                               title="Simpan"
-                              className="p-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition flex-shrink-0 shadow-xs"
+                              className="p-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition flex-shrink-0 shadow-xs cursor-pointer"
                             >
                               <Check className="w-3 h-3" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => setEditingId(null)}
                               disabled={isSubmitting}
                               title="Batal"
-                              className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded transition flex-shrink-0 shadow-xs"
+                              className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded transition flex-shrink-0 shadow-xs cursor-pointer"
                             >
                               <X className="w-3 h-3" />
                             </button>
                           </div>
                         ) : (
-                          formatNumber(k.realita)
+                          <div onClick={() => startEdit(k)} className="cursor-pointer hover:text-amber-900 py-0.5 px-1">
+                            {formatNumber(k.realita)}
+                          </div>
                         )
                       ) : ''}
                     </td>
@@ -455,7 +623,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
       {/* Official Signatures Bar */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm">
         <h3 className="font-bold text-slate-800 text-sm border-b pb-2 mb-4">
-          Lembar Pengesahan Pejabat Madrasah (Dokumen RAPBM 1446-1447 H)
+          Lembar Pengesahan Pejabat Madrasah (Dokumen RAPBM {selectedYear})
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center text-xs">
           <div className="space-y-12 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
@@ -482,7 +650,40 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
 
           <div className="space-y-12 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
             <div>
-              <span className="text-slate-400 block font-medium">Pasuruan, 10 Ramadhan 1447 H</span>
+              {isEditingTanggal ? (
+                <div className="flex items-center gap-1 justify-center mb-1">
+                  <input
+                    type="text"
+                    value={tanggalPengesahan}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTanggalPengesahan(val);
+                      localStorage.setItem('rapbm_tanggal_pengesahan', val);
+                    }}
+                    className="px-2 py-1 text-xs border border-emerald-400 rounded bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full max-w-[210px] text-center shadow-xs"
+                    placeholder="Pasuruan, 10 Ramadhan 1447 H"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => setIsEditingTanggal(false)}
+                    className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition flex-shrink-0"
+                    title="Simpan Tanggal"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <span className="text-slate-600 font-semibold">{tanggalPengesahan}</span>
+                  <button
+                    onClick={() => setIsEditingTanggal(true)}
+                    className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-100 rounded transition"
+                    title="Edit Tanggal Pengesahan"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
               <span className="font-bold text-slate-800">Bendahara Madrasah</span>
             </div>
             <div>

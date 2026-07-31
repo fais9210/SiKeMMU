@@ -160,7 +160,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
               </button>
-
             </div>
 
           </div>

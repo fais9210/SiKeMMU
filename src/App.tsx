@@ -10,6 +10,7 @@ import { SlipGajiModal } from './components/SlipGajiModal';
 import { ReportsManager } from './components/ReportsManager';
 import { TeachersManager } from './components/TeachersManager';
 import { InventoryManager } from './components/InventoryManager';
+import { SyahriahManager } from './components/SyahriahManager';
 import { SettingsModal } from './components/SettingsModal';
 
 import {
@@ -18,6 +19,8 @@ import {
   RAPBMItem,
   Teacher,
   Transaction,
+  Student,
+  StudentPayment,
 } from './types';
 import {
   initialMadrasahInfo,
@@ -25,8 +28,10 @@ import {
   initialRAPBMData,
   initialTeachers,
   initialTransactions,
+  initialStudents,
   getDefaultRAPBMForYear,
 } from './data/initialData';
+
 import { getHijriDate } from './utils/hijri';
 import {
   generateCashFlowPDF,
@@ -58,6 +63,8 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
   const [payrolls, setPayrolls] = useState<PayrollRecord[]>(initialPayrolls);
+  const [students, setStudents] = useState<Student[]>(initialStudents as Student[]);
+  const [studentPayments, setStudentPayments] = useState<StudentPayment[]>([]);
 
   // Modals & Synchronization States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -69,25 +76,47 @@ export default function App() {
   const fetchBackendData = async () => {
     setIsSyncing(true);
     try {
-      const [resSettings, resRapbm, resTrx, resTeachers, resPayroll] = await Promise.all([
+      const [resSettings, resRapbm, resTrx, resTeachers, resPayroll, resStudents, resStudentPay] = await Promise.all([
         apiFetch('/api/settings').catch(() => null),
         apiFetch('/api/rapbm').catch(() => null),
         apiFetch('/api/transactions').catch(() => null),
         apiFetch('/api/teachers').catch(() => null),
         apiFetch('/api/payroll').catch(() => null),
+        apiFetch('/api/students').catch(() => null),
+        apiFetch('/api/student-payments').catch(() => null),
       ]);
 
-      if (resSettings && resSettings.ok) setMadrasahInfo(await resSettings.json());
-      if (resRapbm && resRapbm.ok) setRapbmData(await resRapbm.json());
-      if (resTrx && resTrx.ok) setTransactions(await resTrx.json());
-      if (resTeachers && resTeachers.ok) setTeachers(await resTeachers.json());
-      if (resPayroll && resPayroll.ok) setPayrolls(await resPayroll.json());
+      const parseJsonSafe = async (res: Response | null) => {
+        if (!res || !res.ok) return null;
+        try {
+          return await res.json();
+        } catch {
+          return null;
+        }
+      };
+
+      const settingsData = await parseJsonSafe(resSettings);
+      const rapbmDataRes = await parseJsonSafe(resRapbm);
+      const trxData = await parseJsonSafe(resTrx);
+      const teachersData = await parseJsonSafe(resTeachers);
+      const payrollData = await parseJsonSafe(resPayroll);
+      const studentsData = await parseJsonSafe(resStudents);
+      const studentPayData = await parseJsonSafe(resStudentPay);
+
+      if (settingsData) setMadrasahInfo(settingsData);
+      if (rapbmDataRes) setRapbmData(rapbmDataRes);
+      if (trxData) setTransactions(trxData);
+      if (teachersData) setTeachers(teachersData);
+      if (payrollData) setPayrolls(payrollData);
+      if (studentsData) setStudents(studentsData);
+      if (studentPayData) setStudentPayments(studentPayData);
     } catch (e) {
       console.warn('Backend server offline, using local initial state', e);
     } finally {
       setIsSyncing(false);
     }
   };
+
 
   useEffect(() => {
     fetchBackendData();
@@ -294,9 +323,11 @@ export default function App() {
         body: JSON.stringify(updated),
       });
       // Sync payrolls after teacher is updated
-      const payRes = await apiFetch('/api/payrolls');
-      const payData = await payRes.json();
-      setPayrolls(payData);
+      const payRes = await apiFetch('/api/payroll');
+      if (payRes && payRes.ok) {
+        const payData = await payRes.json();
+        setPayrolls(payData);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -420,12 +451,126 @@ export default function App() {
     }
   };
 
+  // Student & Payment Handlers
+  const handleAddStudent = async (studentData: Omit<Student, 'id'> & { id?: string }) => {
+    try {
+      const res = await apiFetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentData),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setStudents((prev) => [...prev, saved]);
+      }
+    } catch (e) {
+      console.error('Error adding student:', e);
+    }
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    setStudents((prev) => prev.filter((s) => s.id !== id));
+    setStudentPayments((prev) => prev.filter((p) => p.studentId !== id));
+    try {
+      const res = await apiFetch(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (res && res.ok) {
+        await fetchBackendData();
+      }
+    } catch (e) {
+      console.error('Error deleting student:', e);
+      await fetchBackendData();
+    }
+  };
+
+  const handleImportStudents = async (studentsList: any[], overwrite = false) => {
+    try {
+      const res = await apiFetch('/api/students/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentsList, overwrite }),
+      });
+      if (res.ok) {
+        await fetchBackendData();
+      }
+    } catch (e) {
+      console.error('Error importing students:', e);
+    }
+  };
+
+  const handleSaveBatchPayments = async (paymentsList: Omit<StudentPayment, 'id'>[], createCashbookEntry: boolean) => {
+    try {
+      const res = await apiFetch('/api/student-payments/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payments: paymentsList, createCashbookEntry }),
+      });
+      if (res.ok) {
+        // Refetch backend data to synchronize payments, cashbook transactions, and RAPBM
+        await fetchBackendData();
+      }
+    } catch (e) {
+      console.error('Error saving batch payments:', e);
+    }
+  };
+
+  const handleDeletePayment = async (id: string) => {
+    setStudentPayments((prev) => prev.filter((p) => p.id !== id));
+    try {
+      const res = await apiFetch(`/api/student-payments/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (res && res.ok) {
+        await fetchBackendData();
+      }
+    } catch (e) {
+      console.error('Error deleting payment:', e);
+      // Re-sync backend data in case deletion failed
+      await fetchBackendData();
+    }
+  };
+
+  const handleDeleteBatchPayments = async (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    setStudentPayments((prev) => prev.filter((p) => !ids.includes(p.id)));
+    try {
+      const res = await apiFetch('/api/student-payments/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (res && res.ok) {
+        await fetchBackendData();
+      }
+    } catch (e) {
+      console.error('Error batch deleting payments:', e);
+      await fetchBackendData();
+    }
+  };
+
+  const handleUpdatePayment = async (id: string, updatedData: Partial<StudentPayment>) => {
+    setStudentPayments((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updatedData } : p))
+    );
+    try {
+      const res = await apiFetch(`/api/student-payments/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+      if (res.ok) {
+        await fetchBackendData();
+      }
+    } catch (e) {
+      console.error('Error updating payment:', e);
+    }
+  };
+
+
   const activeMadrasahInfo = { ...madrasahInfo, tahunAjaranHijri: selectedYear };
 
   // PDF Export Triggers
-  const handleExportRAPBMPDF = () => {
+  const handleExportRAPBMPDF = (customTanggal?: string) => {
     const currentHijri = getHijriDate(new Date(), madrasahInfo.hijriOffsetDays);
-    generateRAPBMPDF(activeMadrasahInfo, currentYearRapbm, currentHijri.formatted);
+    const dateStr = customTanggal || localStorage.getItem('rapbm_tanggal_pengesahan') || `${madrasahInfo.kabupaten || 'Pasuruan'}, ${currentHijri.formatted}`;
+    generateRAPBMPDF(activeMadrasahInfo, currentYearRapbm, dateStr);
   };
 
   const handleExportCashflowPDF = () => {
@@ -512,6 +657,23 @@ export default function App() {
               onExportPDF={handleExportRAPBMPDF}
             />
           )}
+
+          {activeTab === 'syahriah' && (
+            <SyahriahManager
+              madrasah={activeMadrasahInfo}
+              selectedYear={selectedYear}
+              students={students}
+              payments={studentPayments}
+              onAddStudent={handleAddStudent}
+              onDeleteStudent={handleDeleteStudent}
+              onImportStudents={handleImportStudents}
+              onSaveBatchPayments={handleSaveBatchPayments}
+              onDeletePayment={handleDeletePayment}
+              onDeleteBatchPayments={handleDeleteBatchPayments}
+              onUpdatePayment={handleUpdatePayment}
+            />
+          )}
+
 
           {activeTab === 'cashbook' && (
             <CashBook

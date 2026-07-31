@@ -5,7 +5,8 @@ import {
   BookOpenCheck,
   Receipt,
   Users,
-  Menu
+  Menu,
+  Coins
 } from 'lucide-react';
 import { ActiveTab } from './Sidebar';
 
@@ -34,9 +35,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       icon: FileSpreadsheet,
     },
     {
-      id: 'cashbook' as ActiveTab,
-      label: 'Buku Kas',
-      icon: BookOpenCheck,
+      id: 'syahriah' as ActiveTab,
+      label: 'Syahriah',
+      icon: Coins,
     },
     {
       id: 'payroll' as ActiveTab,
@@ -50,6 +51,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       icon: Users,
     },
   ];
+
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/95 backdrop-blur-md border-t border-emerald-800/80 text-white md:hidden shadow-2xl px-1 py-1.5 flex items-center justify-around">

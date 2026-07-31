@@ -1,17 +1,17 @@
 import express from 'express';
 import path from 'path';
-import { pathToFileURL } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { getHijriDate } from './src/utils/hijri';
 import { requireAuth, AuthRequest } from './src/middleware/auth';
 import { db, initTables } from './src/db/db';
-import { settings, rapbmItems, transactions, teachers, payrollRecords, inventory } from './src/db/schema';
-import { eq, desc } from 'drizzle-orm';
-import { initialMadrasahInfo, initialRAPBMData } from './src/data/initialData';
+import { settings, rapbmItems, transactions, teachers, payrollRecords, inventory, students, studentPayments } from './src/db/schema';
+import { eq, desc, inArray } from 'drizzle-orm';
+import { initialMadrasahInfo, initialRAPBMData, initialStudents } from './src/data/initialData';
 
-export async function createApp() {
+
+async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = 3000;
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -49,6 +49,17 @@ export async function createApp() {
   } catch (e) {
     console.error('Error initializing rapbm:', e);
   }
+
+  // Init Students
+  try {
+    const existingStudents = await db.select().from(students);
+    if (existingStudents.length === 0) {
+      await db.insert(students).values(initialStudents);
+    }
+  } catch (e) {
+    console.error('Error initializing students:', e);
+  }
+
 
 
   // API ROUTES
@@ -455,6 +466,253 @@ export async function createApp() {
     }
   });
 
+  // 5.6 Students Management API
+  app.get("/api/students", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const data = await db.select().from(students);
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch students" });
+    }
+  });
+
+  app.post("/api/students", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const newStudent = {
+        id: req.body.id || `144${Date.now().toString().slice(-7)}`,
+        ranting: req.body.ranting || 'A-22',
+        name: req.body.name,
+        gender: req.body.gender || 'L',
+        age: Number(req.body.age) || 9,
+        kelas: req.body.kelas || 'Kelas 1',
+        status: req.body.status || 'AKTIF',
+      };
+      const inserted = await db.insert(students).values(newStudent).returning();
+      res.status(201).json(inserted[0]);
+    } catch (error) {
+      console.error('Error adding student:', error);
+      res.status(500).json({ error: "Failed to add student" });
+    }
+  });
+
+  app.put("/api/students/:id", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await db.update(students).set(req.body).where(eq(students.id, id as string)).returning();
+      if (updated.length > 0) return res.json(updated[0]);
+      res.status(404).json({ error: "Student not found" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update student" });
+    }
+  });
+
+  app.delete("/api/students/:id", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const paramId = String(req.params.id);
+      const decodedId = decodeURIComponent(paramId);
+
+      // Delete student's payments first
+      await db.delete(studentPayments).where(eq(studentPayments.studentId, decodedId));
+      if (decodedId !== paramId) {
+        await db.delete(studentPayments).where(eq(studentPayments.studentId, paramId));
+      }
+
+      // Delete student record
+      const deleted = await db.delete(students).where(eq(students.id, decodedId)).returning();
+      if (deleted.length === 0 && decodedId !== paramId) {
+        await db.delete(students).where(eq(students.id, paramId));
+      }
+
+      res.json({ success: true, id: decodedId });
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      res.status(500).json({ error: "Failed to delete student" });
+    }
+  });
+
+  app.post("/api/students/bulk", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { studentsList, overwrite } = req.body;
+      if (!Array.isArray(studentsList) || studentsList.length === 0) {
+        return res.status(400).json({ error: "Students list is empty" });
+      }
+
+      if (overwrite) {
+        await db.delete(students);
+      }
+
+      const insertedStudents = [];
+      for (const s of studentsList) {
+        const studentObj = {
+          id: String(s.id || s.nis || `144${Date.now().toString().slice(-7)}`),
+          ranting: s.ranting || 'A-22',
+          name: String(s.name || s.nama || '').trim().toUpperCase(),
+          gender: (s.gender || s.jk || 'L').toString().toUpperCase().startsWith('P') ? 'P' : 'L',
+          age: Number(s.age) || 9,
+          kelas: String(s.kelas || 'Kelas 1').trim(),
+          status: s.status || 'AKTIF',
+        };
+        if (!studentObj.name) continue;
+
+        // Upsert or insert
+        const existing = await db.select().from(students).where(eq(students.id, studentObj.id));
+        if (existing.length > 0) {
+          const updated = await db.update(students).set(studentObj).where(eq(students.id, studentObj.id)).returning();
+          insertedStudents.push(updated[0]);
+        } else {
+          const inserted = await db.insert(students).values(studentObj).returning();
+          insertedStudents.push(inserted[0]);
+        }
+      }
+
+      res.status(201).json({ success: true, count: insertedStudents.length, data: insertedStudents });
+    } catch (error) {
+      console.error('Error bulk importing students:', error);
+      res.status(500).json({ error: "Failed to import students" });
+    }
+  });
+
+  // 5.7 Student Payments API
+  app.get("/api/student-payments", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const data = await db.select().from(studentPayments).orderBy(desc(studentPayments.dateGregorian));
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch student payments" });
+    }
+  });
+
+  app.post("/api/student-payments/batch", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { payments, createCashbookEntry } = req.body;
+      if (!Array.isArray(payments) || payments.length === 0) {
+        return res.status(400).json({ error: "Payments array is empty" });
+      }
+
+      const insertedRecords = [];
+      let totalAmountBatch = 0;
+      const paymentType = payments[0]?.type || 'SYAHRIYAH';
+      const tahunAjaran = payments[0]?.tahunAjaran || '1446 - 1447 H.';
+      const kelas = payments[0]?.kelas || '';
+      const dateGregorian = payments[0]?.dateGregorian || new Date().toISOString().split('T')[0];
+      const dateHijri = payments[0]?.dateHijri || '';
+
+      for (const p of payments) {
+        const id = `pay-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        const record = {
+          id,
+          studentId: p.studentId,
+          studentName: p.studentName,
+          tahunAjaran: p.tahunAjaran || tahunAjaran,
+          kelas: p.kelas || kelas,
+          type: p.type,
+          amount: Number(p.amount) || 0,
+          dateGregorian: p.dateGregorian || dateGregorian,
+          dateHijri: p.dateHijri || dateHijri,
+          monthPeriod: p.monthPeriod || '',
+          recordedBy: p.recordedBy || 'Bendahara',
+          notes: p.notes || '',
+        };
+        const inserted = await db.insert(studentPayments).values(record).returning();
+        insertedRecords.push(inserted[0]);
+        totalAmountBatch += Number(p.amount) || 0;
+      }
+
+      // Automatically sync income to Cashbook/Transactions if total > 0
+      if (createCashbookEntry && totalAmountBatch > 0) {
+        const txId = `tx-syahriah-${Date.now()}`;
+        const rapbmCode = paymentType === 'SYAHRIYAH' ? '2.1' : '6.1';
+        const category = paymentType === 'SYAHRIYAH' ? 'Uang Syahriyah' : `Iuran ${paymentType}`;
+        const description = `Penerimaan ${paymentType} ${kelas} (${payments.length} Murid)`;
+        
+        await db.insert(transactions).values({
+          id: txId,
+          tahunAjaran,
+          dateGregorian,
+          dateHijri,
+          type: 'IN',
+          rapbmCode,
+          category,
+          description,
+          amount: totalAmountBatch,
+          recordedBy: 'Bendahara',
+          receiptNumber: `SYH-${Date.now().toString().slice(-6)}`,
+        });
+
+        // Also update RAPBM realita
+        const existingRapbm = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, rapbmCode));
+        if (existingRapbm.length > 0) {
+          const item = existingRapbm.find(r => r.tahunAjaran === tahunAjaran) || existingRapbm[0];
+          const newRealita = item.realita + totalAmountBatch;
+          const newPersentase = item.jumlahAnggaran > 0 ? Math.round((newRealita / item.jumlahAnggaran) * 100) : 100;
+          await db.update(rapbmItems).set({
+            realita: newRealita,
+            persentase: newPersentase,
+          }).where(eq(rapbmItems.id, item.id));
+        }
+      }
+
+      res.status(201).json({ success: true, count: insertedRecords.length, totalAmount: totalAmountBatch });
+    } catch (error) {
+      console.error('Error saving batch payments:', error);
+      res.status(500).json({ error: "Failed to save batch payments" });
+    }
+  });
+
+  app.put("/api/student-payments/:id", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { amount, dateGregorian, dateHijri, monthPeriod, notes, type, kelas } = req.body;
+      const updated = await db.update(studentPayments).set({
+        ...(amount !== undefined ? { amount: Number(amount) } : {}),
+        ...(dateGregorian ? { dateGregorian } : {}),
+        ...(dateHijri ? { dateHijri } : {}),
+        ...(monthPeriod !== undefined ? { monthPeriod } : {}),
+        ...(notes !== undefined ? { notes } : {}),
+        ...(type ? { type } : {}),
+        ...(kelas ? { kelas } : {}),
+      }).where(eq(studentPayments.id, id as string)).returning();
+
+      if (updated.length > 0) {
+        return res.json(updated[0]);
+      }
+      res.status(404).json({ error: "Student payment not found" });
+    } catch (error) {
+      console.error('Error updating student payment:', error);
+      res.status(500).json({ error: "Failed to update student payment" });
+    }
+  });
+
+  app.delete("/api/student-payments/:id", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const paramId = String(req.params.id);
+      const decodedId = decodeURIComponent(paramId);
+      const deleted = await db.delete(studentPayments).where(eq(studentPayments.id, decodedId)).returning();
+      if (deleted.length === 0 && decodedId !== paramId) {
+        await db.delete(studentPayments).where(eq(studentPayments.id, paramId));
+      }
+      res.json({ success: true, id: decodedId });
+    } catch (error) {
+      console.error('Error deleting student payment:', error);
+      res.status(500).json({ error: "Failed to delete student payment" });
+    }
+  });
+
+  app.post("/api/student-payments/bulk-delete", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "No payment IDs provided" });
+      }
+      await db.delete(studentPayments).where(inArray(studentPayments.id, ids));
+      res.json({ success: true, count: ids.length });
+    } catch (error) {
+      console.error('Error bulk deleting student payments:', error);
+      res.status(500).json({ error: "Failed to delete student payments in bulk" });
+    }
+  });
+
+
   // 6. Hijri Conversion API
   app.get('/api/hijri', requireAuth, async (req: AuthRequest, res) => {
     try {
@@ -482,28 +740,9 @@ export async function createApp() {
     });
   }
   
-  return app;
-}
-
-export async function startServer() {
-  const app = await createApp();
-  const PORT = Number(process.env.PORT) || 3000;
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Madrasah Finance Server] Running on http://localhost:${PORT}`);
   });
 }
 
-const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMainModule) {
-  startServer();
-}
-
-export default async function handler(req: any, res: any) {
-  const app = await createApp();
-  return app.handle(req, res, (err: unknown) => {
-    if (err) {
-      res.statusCode = 500;
-      res.end('Internal Server Error');
-    }
-  });
-}
+startServer();

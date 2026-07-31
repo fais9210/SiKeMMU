@@ -97,3 +97,29 @@ export const inventory = pgTable('inventory', {
   acquisitionDate: text('acquisition_date'),
   notes: text('notes'),
 });
+
+export const students = pgTable('students', {
+  id: text('id').primaryKey(),
+  ranting: text('ranting').notNull().default('A-22'),
+  name: text('name').notNull(),
+  gender: text('gender').notNull().default('L'), // 'L' | 'P'
+  age: integer('age').notNull().default(9),
+  kelas: text('kelas').notNull().default('Kelas 1'),
+  status: text('status').notNull().default('AKTIF'),
+});
+
+export const studentPayments = pgTable('student_payments', {
+  id: text('id').primaryKey(),
+  studentId: text('student_id').notNull(),
+  studentName: text('student_name').notNull(),
+  tahunAjaran: text('tahun_ajaran').notNull(),
+  kelas: text('kelas').notNull(),
+  type: text('type').notNull(), // 'SYAHRIYAH' | 'IMDA' | 'IMNI'
+  amount: integer('amount').notNull().default(0),
+  dateGregorian: text('date_gregorian').notNull(),
+  dateHijri: text('date_hijri').notNull(),
+  monthPeriod: text('month_period'),
+  recordedBy: text('recorded_by').default('Bendahara'),
+  notes: text('notes'),
+});
+

@@ -157,3 +157,23 @@ export const initialTeachers: Teacher[] = [];
 export const initialTransactions: Transaction[] = [];
 
 export const initialPayrolls: PayrollRecord[] = [];
+
+export const initialStudents = [
+  { id: '1446003540', ranting: 'A-22', name: 'ABDUL FATIR', gender: 'L', age: 9, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446001007', ranting: 'A-22', name: 'ACHMAD ROYYAN FIRDAUS', gender: 'L', age: 9, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446001004', ranting: 'A-22', name: 'AHMAD UBAIDILLAH', gender: 'L', age: 9, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446001010', ranting: 'A-22', name: 'M DIMAZ SABILILLAH', gender: 'L', age: 10, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446002751', ranting: 'A-22', name: 'M FAHRI ZAFRAN KHOIRI', gender: 'L', age: 9, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446001009', ranting: 'A-22', name: 'M RAFA AZKA MAULANA', gender: 'L', age: 9, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446001005', ranting: 'A-22', name: 'MUHAMMAD NAJIYULLOH', gender: 'L', age: 10, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446002708', ranting: 'A-22', name: 'MUHAMMAD NAUFAL AZKA AIFARO', gender: 'L', age: 8, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446001006', ranting: 'A-22', name: 'MUHAMMAD RAFIF SAVA', gender: 'L', age: 8, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446005460', ranting: 'A-22', name: 'NUR MUHAMMAD FACHRICHUZ ZULKARNAIN', gender: 'L', age: 8, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1447002364', ranting: 'A-22', name: 'FATIMAH SHAKILA KHAIRINA', gender: 'P', age: 8, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1447002368', ranting: 'A-22', name: 'INDAH NUR AINI', gender: 'P', age: 8, kelas: 'Kelas 2', status: 'AKTIF' },
+  { id: '1446001012', ranting: 'A-22', name: 'AHMAD BADAWI', gender: 'L', age: 7, kelas: 'Kelas 1', status: 'AKTIF' },
+  { id: '1446001015', ranting: 'A-22', name: 'AISYAH AZ-ZAHRA', gender: 'P', age: 7, kelas: 'Kelas 1', status: 'AKTIF' },
+  { id: '1446001020', ranting: 'A-22', name: 'MUHAMMAD AL-FATIH', gender: 'L', age: 11, kelas: 'Kelas 4', status: 'AKTIF' },
+  { id: '1446001025', ranting: 'A-22', name: 'ZAHRA AMIRA', gender: 'P', age: 12, kelas: 'Kelas 5', status: 'AKTIF' },
+];
+
