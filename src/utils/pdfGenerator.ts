@@ -561,3 +561,177 @@ export function generateNotaPengeluaranPDF(
   doc.save(`Nota_Pengeluaran_RAPBM_${nota.noNota.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
 }
 
+/**
+ * Generates a batch PDF containing up to 4 receipts (Nota Pengeluaran) per A4 page (2x2 Grid).
+ */
+export function generateBatchNotaPengeluaranA4PDF(
+  madrasah: MadrasahInfo,
+  notaList: NotaPengeluaranDetail[]
+) {
+  if (!notaList || notaList.length === 0) return;
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const cardsPerPage = 4;
+  const totalPages = Math.ceil(notaList.length / cardsPerPage);
+
+  // Grid offsets for 2x2 grid on A4 Portrait (210mm x 297mm)
+  const gridPositions = [
+    { x: 6, y: 6 },     // Card 0: Top-Left
+    { x: 108, y: 6 },   // Card 1: Top-Right
+    { x: 6, y: 148 },   // Card 2: Bottom-Left
+    { x: 108, y: 148 }, // Card 3: Bottom-Right
+  ];
+
+  for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+    if (pageIdx > 0) {
+      doc.addPage();
+    }
+
+    // Cut guide dashed lines
+    doc.setLineWidth(0.1);
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(105, 4, 105, 293); // Vertical center cut guide
+    doc.line(4, 146, 206, 146); // Horizontal center cut guide
+    doc.setLineDashPattern([], 0); // reset dash
+
+    const pageItems = notaList.slice(pageIdx * cardsPerPage, (pageIdx + 1) * cardsPerPage);
+
+    pageItems.forEach((nota, itemIdx) => {
+      const pos = gridPositions[itemIdx];
+      const x = pos.x;
+      const y = pos.y;
+      const cardW = 96;
+      const cardH = 138;
+
+      // Outer & Inner Card Borders
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(16, 185, 129); // emerald-600
+      doc.rect(x, y, cardW, cardH);
+
+      doc.setLineWidth(0.2);
+      doc.setDrawColor(210, 210, 210);
+      doc.rect(x + 1, y + 1, cardW - 2, cardH - 2);
+
+      // KOP Madrasah Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+      doc.text(madrasah.namaMadrasah.toUpperCase(), x + cardW / 2, y + 6, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`${madrasah.alamat}, ${madrasah.kabupaten}`, x + cardW / 2, y + 10, { align: 'center' });
+
+      doc.setLineWidth(0.4);
+      doc.setDrawColor(15, 23, 42);
+      doc.line(x + 4, y + 12, x + cardW - 4, y + 12);
+
+      // Title: KWITANSI BUKTI PENGELUARAN KAS
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(16, 185, 129);
+      doc.text('KWITANSI BUKTI PENGELUARAN KAS', x + cardW / 2, y + 16, { align: 'center' });
+
+      doc.setFontSize(5.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text(`TA RAPBM: ${nota.tahunAjaran}`, x + cardW / 2, y + 19, { align: 'center' });
+
+      // Receipt Meta Info
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(`No: ${nota.noNota}`, x + 4, y + 23);
+      doc.text(`Tgl: ${nota.tanggalGregorian || ''}`, x + cardW - 4, y + 23, { align: 'right' });
+
+      doc.setLineWidth(0.2);
+      doc.setDrawColor(220, 220, 220);
+      doc.line(x + 4, y + 24.5, x + cardW - 4, y + 24.5);
+
+      // Content Details
+      doc.setFontSize(6.5);
+      
+      // Dibayarkan Kepada
+      doc.setFont('helvetica', 'bold');
+      doc.text('Dibayar Ke', x + 4, y + 29);
+      doc.setFont('helvetica', 'normal');
+      const recipientText = doc.splitTextToSize(`: ${nota.penerima}`, 68);
+      doc.text(recipientText, x + 22, y + 29);
+
+      const recipientH = (recipientText.length - 1) * 3;
+      const posY = y + 33 + recipientH;
+
+      // Pos RAPBM
+      doc.setFont('helvetica', 'bold');
+      doc.text('Pos RAPBM', x + 4, posY);
+      doc.setFont('helvetica', 'normal');
+      const posLines = doc.splitTextToSize(`: [Kode ${nota.posRapbmKode}] ${nota.posRapbmNama}`, 68);
+      doc.text(posLines, x + 22, posY);
+
+      const posH = (posLines.length - 1) * 3;
+      const keperluanY = posY + 4 + posH;
+
+      // Keperluan
+      doc.setFont('helvetica', 'bold');
+      doc.text('Keperluan', x + 4, keperluanY);
+      doc.setFont('helvetica', 'normal');
+      const keperluanLines = doc.splitTextToSize(`: ${nota.keperluan}`, 68);
+      doc.text(keperluanLines, x + 22, keperluanY);
+
+      // Terbayar Box
+      const boxY = y + 68;
+      doc.setFillColor(240, 253, 244);
+      doc.setDrawColor(16, 185, 129);
+      doc.rect(x + 4, boxY, cardW - 8, 7, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(6, 95, 70);
+      doc.text(`Terbayar: ${formatCurrency(nota.jumlah)}`, x + 6, boxY + 5);
+
+      // Terbilang Text
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(5.8);
+      doc.setTextColor(30, 41, 59);
+      const terbilangLines = doc.splitTextToSize(`# ${terbilang(nota.jumlah)} #`, cardW - 8);
+      doc.text(terbilangLines, x + 4, boxY + 11);
+
+      // Signatures
+      const sigY = y + 114;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(15, 23, 42);
+
+      // Menerima
+      doc.text('Yang Menerima,', x + 16, sigY, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.text(nota.penerima.slice(0, 16), x + 16, sigY + 12, { align: 'center' });
+      doc.setLineWidth(0.2);
+      doc.line(x + 4, sigY + 13, x + 28, sigY + 13);
+
+      // Bendahara
+      doc.setFont('helvetica', 'normal');
+      doc.text('Bendahara,', x + cardW / 2, sigY, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.text(madrasah.treasurerName.slice(0, 16), x + cardW / 2, sigY + 12, { align: 'center' });
+      doc.line(x + 36, sigY + 13, x + 60, sigY + 13);
+
+      // Kepala
+      doc.setFont('helvetica', 'normal');
+      doc.text('Kepala Madrasah,', x + cardW - 16, sigY, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.text(madrasah.headmasterName.slice(0, 16), x + cardW - 16, sigY + 12, { align: 'center' });
+      doc.line(x + cardW - 28, sigY + 13, x + cardW - 4, sigY + 13);
+    });
+  }
+
+  doc.save(`Nota_Kolektif_RAPBM_${notaList.length}_Items_A4.pdf`);
+}
+
+
