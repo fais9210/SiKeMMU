@@ -10,10 +10,11 @@ import {
   ChevronRight,
   X,
   PackageOpen,
-  Coins
+  Coins,
+  Printer
 } from 'lucide-react';
 
-export type ActiveTab = 'dashboard' | 'rapbm' | 'syahriah' | 'cashbook' | 'payroll' | 'reports' | 'teachers' | 'inventory' | 'settings';
+export type ActiveTab = 'dashboard' | 'rapbm' | 'syahriah' | 'cashbook' | 'payroll' | 'reports' | 'teachers' | 'inventory' | 'settings' | 'nota';
 
 
 interface SidebarProps {
@@ -57,6 +58,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, unpai
       description: 'Penggajian Ustadz & Staf',
       icon: Receipt,
       badge: unpaidTeachersCount > 0 ? `${unpaidTeachersCount} Guru` : undefined,
+    },
+    {
+      id: 'nota' as ActiveTab,
+      label: 'Cetak Nota Pengeluaran',
+      description: 'Kwitansi & Bukti Kas RAPBM',
+      icon: Printer,
     },
     {
       id: 'reports' as ActiveTab,

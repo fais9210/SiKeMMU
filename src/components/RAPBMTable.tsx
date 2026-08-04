@@ -11,9 +11,11 @@ import {
   SlidersHorizontal,
   PlusCircle,
   Trash2,
+  Printer,
 } from 'lucide-react';
 import { MadrasahInfo, RAPBMItem } from '../types';
 import { formatCurrency, formatNumber, getHijriDate } from '../utils/hijri';
+import { generateNotaPengeluaranPDF } from '../utils/pdfGenerator';
 
 interface InlineNumberCellProps {
   value: number;
@@ -184,6 +186,21 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
     } finally {
       setIsSubmittingNew(false);
     }
+  };
+
+  const handleDirectPrintNota = (item: RAPBMItem) => {
+    const hijriObj = getHijriDate(new Date(), madrasah.hijriOffsetDays);
+    generateNotaPengeluaranPDF(madrasah, {
+      noNota: `BKK-${item.noKode.replace('.', '')}-${Date.now().toString().slice(-4)}`,
+      tanggalGregorian: new Date().toISOString().split('T')[0],
+      tanggalHijri: hijriObj.formatted,
+      penerima: madrasah.treasurerName || 'Penerima / Hak',
+      posRapbmKode: item.noKode,
+      posRapbmNama: `${item.categoryName} - ${item.uraian}`,
+      keperluan: `Pengeluaran Kas RAPBM [Pos Kode ${item.noKode}]: ${item.uraian}`,
+      jumlah: item.realita > 0 ? item.realita : item.jumlahAnggaran,
+      tahunAjaran: selectedYear,
+    });
   };
 
   // Editable Tanggal Pengesahan - Defaults to today's date format
@@ -644,17 +661,27 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
 
                     <td className="py-2 px-2 text-center font-bold">
                       {k ? (
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[11px] ${
-                            k.persentase >= 100
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : k.persentase >= 70
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {k.persentase}%
-                        </span>
+                        <div className="flex items-center justify-center space-x-1">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[11px] ${
+                              k.persentase >= 100
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : k.persentase >= 70
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}
+                          >
+                            {k.persentase}%
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDirectPrintNota(k)}
+                            title="Cetak Kwitansi / Nota Bukti Pengeluaran Kas RAPBM"
+                            className="p-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 rounded transition cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       ) : ''}
                     </td>
                   </tr>

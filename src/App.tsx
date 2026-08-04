@@ -11,6 +11,7 @@ import { ReportsManager } from './components/ReportsManager';
 import { TeachersManager } from './components/TeachersManager';
 import { InventoryManager } from './components/InventoryManager';
 import { SyahriahManager } from './components/SyahriahManager';
+import { NotaReceiptManager } from './components/NotaReceiptManager';
 import { SettingsModal } from './components/SettingsModal';
 
 import {
@@ -32,7 +33,7 @@ import {
   getDefaultRAPBMForYear,
 } from './data/initialData';
 
-import { getHijriDate } from './utils/hijri';
+import { getHijriDate, getCurrentHijriAcademicYear } from './utils/hijri';
 import {
   generateCashFlowPDF,
   generateRAPBMPDF,
@@ -47,15 +48,24 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
 
-  // Academic Year State (RAPBM Tiap Tahun)
-  const [selectedYear, setSelectedYear] = useState<string>('1446 - 1447 H.');
-  const [availableYears, setAvailableYears] = useState<string[]>([
-    '1444 - 1445 H.',
-    '1445 - 1446 H.',
-    '1446 - 1447 H.',
-    '1447 - 1448 H.',
-    '1448 - 1449 H.',
-  ]);
+  const currentRunningYear = getCurrentHijriAcademicYear();
+
+  // Academic Year State (RAPBM Tiap Tahun) - Defaults dynamically to current running year
+  const [selectedYear, setSelectedYear] = useState<string>(currentRunningYear);
+  const [availableYears, setAvailableYears] = useState<string[]>(() => {
+    const defaultYears = [
+      '1444 - 1445 H.',
+      '1445 - 1446 H.',
+      '1446 - 1447 H.',
+      '1447 - 1448 H.',
+      '1448 - 1449 H.',
+      '1449 - 1450 H.',
+    ];
+    if (!defaultYears.includes(currentRunningYear)) {
+      return [...defaultYears, currentRunningYear].sort();
+    }
+    return defaultYears;
+  });
 
   // Application Data States
   const [madrasahInfo, setMadrasahInfo] = useState<MadrasahInfo>(initialMadrasahInfo);
@@ -197,6 +207,7 @@ export default function App() {
     realita: number,
     uraian?: string
   ) => {
+    const prevItem = rapbmData.find((item) => item.id === id);
     const newAnggaran = Number(jumlahAnggaran);
     const newRealita = Number(realita);
     const persentase = newAnggaran > 0 ? Math.round((newRealita / newAnggaran) * 100) : 100;
@@ -228,6 +239,28 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
+
+    // Otomatis masukkan ke catatan transaksi kas saat ada perubahan/penyesuaian realita di RAPBM
+    if (prevItem) {
+      const diffRealita = newRealita - (prevItem.realita || 0);
+      if (diffRealita !== 0) {
+        const hijriObj = getHijriDate(new Date(), madrasahInfo.hijriOffsetDays);
+        const isIncome = prevItem.type === 'PENERIMAAN';
+        const autoTrx: Omit<Transaction, 'id'> = {
+          dateGregorian: new Date().toISOString().split('T')[0],
+          dateHijri: hijriObj.formatted,
+          tahunAjaran: prevItem.tahunAjaran || madrasahInfo.activeYear,
+          type: diffRealita > 0 ? (isIncome ? 'IN' : 'OUT') : (isIncome ? 'OUT' : 'IN'),
+          category: prevItem.categoryName || (isIncome ? 'PENERIMAAN' : 'PENGELUARAN'),
+          description: `Perubahan Realisasi RAPBM [Kode ${prevItem.noKode}]: ${uraian || prevItem.uraian}`,
+          amount: Math.abs(diffRealita),
+          receiptNumber: `RAPBM-${Date.now().toString().slice(-6)}`,
+          recordedBy: madrasahInfo.treasurerName || 'Admin RAPBM',
+          rapbmCode: prevItem.noKode,
+        };
+        await handleAddTransaction(autoTrx);
+      }
+    }
   };
 
   const handleAddRapbmItem = async (newItemData: Omit<RAPBMItem, 'id'>) => {
@@ -245,6 +278,25 @@ export default function App() {
       });
     } catch (e) {
       console.error('Error adding RAPBM item:', e);
+    }
+
+    // Jika item RAPBM baru ditambahkan dengan realita/pencatatan nominal > 0, otomatis buat transaksi kas
+    if (newItemData.realita && newItemData.realita > 0) {
+      const hijriObj = getHijriDate(new Date(), madrasahInfo.hijriOffsetDays);
+      const isIncome = newItemData.type === 'PENERIMAAN';
+      const autoTrx: Omit<Transaction, 'id'> = {
+        dateGregorian: new Date().toISOString().split('T')[0],
+        dateHijri: hijriObj.formatted,
+        tahunAjaran: newItemData.tahunAjaran || madrasahInfo.activeYear,
+        type: isIncome ? 'IN' : 'OUT',
+        category: newItemData.categoryName || (isIncome ? 'PENERIMAAN' : 'PENGELUARAN'),
+        description: `Transaksi Baru RAPBM [Kode ${newItemData.noKode}]: ${newItemData.uraian}`,
+        amount: newItemData.realita,
+        receiptNumber: `RAPBM-${Date.now().toString().slice(-6)}`,
+        recordedBy: madrasahInfo.treasurerName || 'Admin RAPBM',
+        rapbmCode: newItemData.noKode,
+      };
+      await handleAddTransaction(autoTrx);
     }
   };
 
@@ -731,6 +783,17 @@ export default function App() {
               onDeleteAllPayrolls={handleDeleteAllPayrolls}
               onSelectPayrollForModal={(p) => setSelectedPayrollForModal(p)}
               onDownloadPDF={handleExportSlipPDF}
+            />
+          )}
+
+          {activeTab === 'nota' && (
+            <NotaReceiptManager
+              madrasah={activeMadrasahInfo}
+              selectedYear={selectedYear}
+              rapbmData={rapbmData}
+              transactions={transactions}
+              onSelectYear={handleSelectYear}
+              availableYears={availableYears}
             />
           )}
 

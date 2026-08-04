@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { MadrasahInfo, PayrollRecord, RAPBMItem, Transaction } from '../types';
-import { formatCurrency, formatNumber } from './hijri';
+import { formatCurrency, formatNumber, terbilang } from './hijri';
 
 export function generateRAPBMPDF(
   madrasah: MadrasahInfo,
@@ -433,3 +433,131 @@ export function generateInventoryPDF(
 
   doc.save(`Inventaris_Madrasah_${madrasah.tahunAjaranHijri.replace(/\s+/g, '_')}.pdf`);
 }
+
+export interface NotaPengeluaranDetail {
+  noNota: string;
+  tanggalGregorian?: string;
+  tanggalHijri: string;
+  penerima: string;
+  posRapbmKode: string;
+  posRapbmNama: string;
+  keperluan: string;
+  jumlah: number;
+  tahunAjaran: string;
+  catatan?: string;
+}
+
+export function generateNotaPengeluaranPDF(
+  madrasah: MadrasahInfo,
+  nota: NotaPengeluaranDetail
+) {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a5',
+  });
+
+  // Outer Decorative Border
+  doc.setLineWidth(0.8);
+  doc.setDrawColor(16, 185, 129); // emerald-600
+  doc.rect(5, 5, 200, 138);
+
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(100, 100, 100);
+  doc.rect(7, 7, 196, 134);
+
+  // KOP Madrasah
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(madrasah.namaMadrasah.toUpperCase(), 105, 15, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`${madrasah.alamat}, Kec. ${madrasah.kecamatan}, Kab. ${madrasah.kabupaten}`, 105, 20, { align: 'center' });
+
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(15, 23, 42);
+  doc.line(12, 23, 198, 23);
+
+  // Title: NOTA / BUKTI PENGELUARAN KAS
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(16, 185, 129);
+  doc.text('KWITANSI / NOTA BUKTI PENGELUARAN KAS', 105, 30, { align: 'center' });
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Tahun Ajaran RAPBM: ${nota.tahunAjaran}`, 105, 34, { align: 'center' });
+
+  // Receipt Meta Info
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`No. Bukti Kas : ${nota.noNota}`, 12, 42);
+  doc.text(`Tanggal : ${nota.tanggalGregorian || new Date().toISOString().split('T')[0]} (${nota.tanggalHijri})`, 198, 42, { align: 'right' });
+
+  // Main Details Table / Box
+  const rows = [
+    ['Telah Dibayarkan Kepada', `: ${nota.penerima}`],
+    ['Pos Anggaran RAPBM', `: [Kode ${nota.posRapbmKode}] ${nota.posRapbmNama}`],
+    ['Uraian / Keperluan', `: ${nota.keperluan}`],
+    ['Jumlah Uang', `: ${formatCurrency(nota.jumlah)}`],
+    ['Terbilang', `: # ${terbilang(nota.jumlah)} #`],
+  ];
+
+  autoTable(doc, {
+    startY: 46,
+    margin: { left: 12, right: 12 },
+    body: rows,
+    theme: 'plain',
+    styles: { fontSize: 8.5, cellPadding: 1.5, textColor: [15, 23, 42] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 42 },
+      1: { cellWidth: 142 },
+    },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY + 4;
+
+  // Amount Highlight Box
+  doc.setFillColor(240, 253, 244);
+  doc.setDrawColor(16, 185, 129);
+  doc.rect(12, finalY, 75, 10, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(6, 95, 70);
+  doc.text(`Terbayar: ${formatCurrency(nota.jumlah)}`, 15, finalY + 6.5);
+
+  // Signatures Section
+  const sigY = finalY + 16;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(15, 23, 42);
+
+  // Left: Yang Menerima
+  doc.text('Yang Menerima / Hak', 30, sigY, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(nota.penerima, 30, sigY + 16, { align: 'center' });
+  doc.setLineWidth(0.3);
+  doc.line(12, sigY + 17, 48, sigY + 17);
+
+  // Center: Bendahara
+  doc.setFont('helvetica', 'normal');
+  doc.text('Bendahara Madrasah,', 105, sigY, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(madrasah.treasurerName, 105, sigY + 16, { align: 'center' });
+  doc.line(87, sigY + 17, 123, sigY + 17);
+
+  // Right: Mengetahui Kepala
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Karangmenggah, ${nota.tanggalHijri}`, 180, sigY - 4, { align: 'center' });
+  doc.text('Mengetahui, Kepala Madrasah', 180, sigY, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(madrasah.headmasterName, 180, sigY + 16, { align: 'center' });
+  doc.line(162, sigY + 17, 198, sigY + 17);
+
+  doc.save(`Nota_Pengeluaran_RAPBM_${nota.noNota.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+}
+
