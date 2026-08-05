@@ -557,7 +557,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                               </div>
                             </div>
                           )}
-                          {(p.noKode === '2.1' || p.uraian.toLowerCase().includes('uang syahriyah')) ? (
+                          {(p.noKode === '2.1' || p.uraian.toLowerCase().includes('syahri')) ? (
                             <div className="flex items-center mt-0.5">
                               <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 shadow-2xs" title="Realita otomatis disinkronkan dengan total Pembayaran Syahriah santri tahun ini">
                                 ⚡ Sync Syahriah
@@ -1094,7 +1094,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     <p className="text-[10px] text-amber-700 mt-1 italic font-medium">
                       * Realita otomatis di-sync dari module Slip Gaji Guru TA {selectedYear}.
                     </p>
-                  ) : (fullEditItem.type === 'PENERIMAAN' && (fullEditItem.noKode === '2.1' || fullEditItem.uraian.toLowerCase().includes('uang syahriyah'))) ? (
+                  ) : (fullEditItem.type === 'PENERIMAAN' && (fullEditItem.noKode === '2.1' || fullEditItem.uraian.toLowerCase().includes('syahri'))) ? (
                     <p className="text-[10px] text-emerald-700 mt-1 italic font-medium">
                       * Realita otomatis di-sync dari module Pembayaran Syahriah Santri TA {selectedYear}.
                     </p>

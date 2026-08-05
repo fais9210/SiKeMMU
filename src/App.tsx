@@ -144,7 +144,9 @@ export default function App() {
 
     // Total Uang Syahriyah (Penerimaan) dari Pembayaran Syahriah santri tahun aktif
     const activeYearSyahriah = studentPayments.filter(
-      (p) => (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) && p.type === 'SYAHRIYAH'
+      (p) =>
+        (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
+        (!p.type || p.type.toUpperCase().includes('SYAHRI'))
     );
     const totalUangSyahriah = activeYearSyahriah.reduce((sum, p) => sum + (p.amount || 0), 0);
 
@@ -160,7 +162,7 @@ export default function App() {
         targetRealita = totalBisyarohGuru;
       }
       // Sync Uang Syahriyah (Penerimaan, Kode 2.1)
-      else if (item.type === 'PENERIMAAN' && (item.noKode === '2.1' || item.uraian.toLowerCase().includes('uang syahriyah'))) {
+      else if (item.type === 'PENERIMAAN' && (item.noKode === '2.1' || item.uraian.toLowerCase().includes('syahri'))) {
         targetRealita = totalUangSyahriah;
       }
       // Sync dari Buku Kas Real-time untuk transaksi RAPBM lainnya
