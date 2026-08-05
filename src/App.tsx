@@ -1033,6 +1033,8 @@ export default function App() {
               madrasah={activeMadrasahInfo}
               transactions={transactions}
               rapbmData={rapbmData}
+              studentPayments={studentPayments}
+              payrolls={payrolls}
               selectedYear={selectedYear}
               availableYears={availableYears}
               onSelectYear={handleSelectYear}
