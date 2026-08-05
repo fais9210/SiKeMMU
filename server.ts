@@ -231,6 +231,62 @@ async function startServer() {
     }
   });
 
+  app.post('/api/clear-year-data', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { tahunAjaran } = req.body;
+      const targetYear = tahunAjaran || '1446 - 1447 H.';
+
+      // 1. Delete transactions for target year
+      const allTrxs = await db.select().from(transactions);
+      const trxsToDelete = allTrxs.filter(
+        (t) => t.tahunAjaran === targetYear || (!t.tahunAjaran && targetYear === '1446 - 1447 H.')
+      );
+      if (trxsToDelete.length > 0) {
+        await db.delete(transactions).where(inArray(transactions.id, trxsToDelete.map((t) => t.id)));
+      }
+
+      // 2. Delete student payments for target year
+      const allPayments = await db.select().from(studentPayments);
+      const paymentsToDelete = allPayments.filter(
+        (p) => p.tahunAjaran === targetYear || (!p.tahunAjaran && targetYear === '1446 - 1447 H.')
+      );
+      if (paymentsToDelete.length > 0) {
+        await db.delete(studentPayments).where(inArray(studentPayments.id, paymentsToDelete.map((p) => p.id)));
+      }
+
+      // 3. Delete payroll records for target year
+      const allPayrolls = await db.select().from(payrollRecords);
+      const payrollsToDelete = allPayrolls.filter(
+        (pr) => pr.tahunAjaran === targetYear || (!pr.tahunAjaran && targetYear === '1446 - 1447 H.')
+      );
+      if (payrollsToDelete.length > 0) {
+        await db.delete(payrollRecords).where(inArray(payrollRecords.id, payrollsToDelete.map((pr) => pr.id)));
+      }
+
+      // 4. Reset RAPBM items for target year (realita = 0, persentase = 0, and PENERIMAAN jumlahAnggaran = 0)
+      const allRapbm = await db.select().from(rapbmItems);
+      const itemsToReset = allRapbm.filter(
+        (r) => r.tahunAjaran === targetYear || (!r.tahunAjaran && targetYear === '1446 - 1447 H.')
+      );
+      for (const item of itemsToReset) {
+        const resetAnggaran = item.type === 'PENERIMAAN' ? 0 : item.jumlahAnggaran;
+        await db
+          .update(rapbmItems)
+          .set({
+            jumlahAnggaran: resetAnggaran,
+            realita: 0,
+            persentase: 0,
+          })
+          .where(eq(rapbmItems.id, item.id));
+      }
+
+      res.json({ success: true, message: `Data transaksi & RAPBM tahun ajaran ${targetYear} berhasil dibersihkan.` });
+    } catch (error) {
+      console.error('Error clearing year data:', error);
+      res.status(500).json({ error: 'Failed to clear year data' });
+    }
+  });
+
   app.delete('/api/transactions/:id', requireAuth, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;

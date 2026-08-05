@@ -203,20 +203,20 @@ export const CashBook: React.FC<CashBookProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {onDeleteAllTransactions && transactions.length > 0 && (
+            {onDeleteAllTransactions && currentYearTransactions.length > 0 && (
               <button
                 type="button"
                 onClick={() => {
                   if (
                     confirm(
-                      'Apakah Anda yakin ingin menghapus SEMUA transaksi di SEMUA tahun ajaran?\n\nTindakan ini tidak dapat dibatalkan!'
+                      `Apakah Anda yakin ingin menghapus SEMUA transaksi, data pembayaran syahriyah, dan slip gaji untuk Tahun Ajaran ${selectedYear || madrasah.activeYear || '1446 - 1447 H.'}?\n\nNilai realita & tabel RAPBM pada tahun ajaran ini juga akan dikosongkan. Tindakan ini tidak dapat dibatalkan!`
                     )
                   ) {
                     onDeleteAllTransactions();
                   }
                 }}
                 className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-semibold rounded-xl text-xs transition flex items-center space-x-1.5"
-                title="Hapus semua data transaksi kas"
+                title={`Hapus semua data transaksi kas Tahun Ajaran ${selectedYear || 'aktif'}`}
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                 <span>Hapus Semua Transaksi</span>

@@ -602,11 +602,57 @@ export default function App() {
   };
 
   const handleDeleteAllTransactions = async () => {
-    setTransactions([]);
+    const activeYr = selectedYear || '1446 - 1447 H.';
+
+    // 1. Clear local transactions for active year
+    setTransactions((prev) =>
+      prev.filter((t) => {
+        const isThisYear = t.tahunAjaran === activeYr || (!t.tahunAjaran && activeYr === '1446 - 1447 H.');
+        return !isThisYear;
+      })
+    );
+
+    // 2. Clear local student payments for active year
+    setStudentPayments((prev) =>
+      prev.filter((p) => {
+        const isThisYear = p.tahunAjaran === activeYr || (!p.tahunAjaran && activeYr === '1446 - 1447 H.');
+        return !isThisYear;
+      })
+    );
+
+    // 3. Clear local payrolls for active year
+    setPayrolls((prev) =>
+      prev.filter((pr) => {
+        const isThisYear = pr.tahunAjaran === activeYr || (!pr.tahunAjaran && activeYr === '1446 - 1447 H.');
+        return !isThisYear;
+      })
+    );
+
+    // 4. Reset RAPBM realita & persentase (and PENERIMAAN jumlahAnggaran) for active year
+    setRapbmData((prev) =>
+      prev.map((item) => {
+        const isThisYear = item.tahunAjaran === activeYr || (!item.tahunAjaran && activeYr === '1446 - 1447 H.');
+        if (isThisYear) {
+          return {
+            ...item,
+            jumlahAnggaran: item.type === 'PENERIMAAN' ? 0 : item.jumlahAnggaran,
+            realita: 0,
+            persentase: 0,
+          };
+        }
+        return item;
+      })
+    );
+
+    // 5. Sync deletion to backend
     try {
-      await apiFetch('/api/transactions/all', { method: 'DELETE' });
+      await apiFetch('/api/clear-year-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tahunAjaran: activeYr }),
+      });
     } catch (e) {
-      console.error('Error deleting all transactions:', e);
+      console.error('Error clearing year data:', e);
     }
   };
 
