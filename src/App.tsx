@@ -243,9 +243,9 @@ export default function App() {
       // Sync purely from Real-time Cash Book transactions
       const targetRealita = trxSumByRapbmId[item.id] || 0;
 
-      // For PENERIMAAN items, ensure jumlahAnggaran reflects targetRealita if zero or updated
+      // For PENERIMAAN items, ensure jumlahAnggaran matches targetRealita so total PENERIMAAN is 100% synced with Kas Realtime
       let targetAnggaran = item.jumlahAnggaran;
-      if (item.type === 'PENERIMAAN' && (item.jumlahAnggaran === 0 || item.jumlahAnggaran < targetRealita)) {
+      if (item.type === 'PENERIMAAN') {
         targetAnggaran = targetRealita;
       }
 

@@ -273,9 +273,9 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
   const maxRows = Math.max(penerimaanList.length, pengeluaranList.length);
 
   // Totals
-  const totalInAnggaran = rapbmData
+  const totalInRealita = rapbmData
     .filter((i) => i.type === 'PENERIMAAN')
-    .reduce((sum, item) => sum + (item.jumlahAnggaran || item.realita || 0), 0);
+    .reduce((sum, item) => sum + (item.realita > 0 ? item.realita : (item.jumlahAnggaran || 0)), 0);
 
   const totalOutAnggaran = rapbmData
     .filter((i) => i.type === 'PENGELUARAN')
@@ -798,7 +798,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                 <td colSpan={2} className="py-3 px-3 text-center border-r border-slate-700">TOTAL</td>
                 <td className="py-3 px-3 border-r border-slate-700">JUMLAH PENERIMAAN</td>
                 <td className="py-3 px-3 text-right border-r border-slate-700 text-emerald-300 text-sm">
-                  {formatCurrency(totalInAnggaran)}
+                  {formatCurrency(totalInRealita)}
                 </td>
 
                 <td colSpan={2} className="py-3 px-3 text-center border-r border-slate-700">TOTAL</td>

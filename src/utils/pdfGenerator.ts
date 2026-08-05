@@ -36,11 +36,13 @@ export function generateRAPBMPDF(
 
   const tableRows: any[] = [];
 
-  let totalInAnggaran = 0;
+  let totalInRealita = 0;
   let totalOutAnggaran = 0;
   let totalOutRealita = 0;
 
-  penerimaanList.forEach((item) => (totalInAnggaran += item.jumlahAnggaran));
+  penerimaanList.forEach((item) => {
+    totalInRealita += item.realita > 0 ? item.realita : (item.jumlahAnggaran || 0);
+  });
   pengeluaranList.forEach((item) => {
     totalOutAnggaran += item.jumlahAnggaran;
     totalOutRealita += item.realita;
@@ -54,7 +56,7 @@ export function generateRAPBMPDF(
       p ? p.categoryCode : '',
       p ? p.noKode : '',
       p ? p.uraian : '',
-      p ? formatNumber(p.jumlahAnggaran) : '',
+      p ? formatNumber(p.realita > 0 ? p.realita : p.jumlahAnggaran) : '',
       k ? k.categoryCode : '',
       k ? k.noKode : '',
       k ? k.uraian : '',
@@ -69,7 +71,7 @@ export function generateRAPBMPDF(
     '',
     '',
     'JUMLAH PENERIMAAN',
-    formatNumber(totalInAnggaran),
+    formatNumber(totalInRealita),
     '',
     '',
     'JUMLAH PENGELUARAN',
