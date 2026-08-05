@@ -244,29 +244,36 @@ export default function App() {
 
       // Sync Bisyaroh Guru (Pengeluaran, Kode 1.1)
       if (item.type === 'PENGELUARAN' && (item.noKode === '1.1' || item.uraian.toLowerCase().includes('bisyaroh guru'))) {
-        targetRealita = totalBisyarohGuru;
+        targetRealita = totalBisyarohGuru + (trxSumByRapbmId[item.id] || 0);
       }
       // Sync Uang Syahriyah (Penerimaan, Kode 2.1)
       else if (item.type === 'PENERIMAAN' && (item.noKode === '2.1' || item.uraian.toLowerCase().includes('syahri'))) {
-        targetRealita = totalUangSyahriah;
+        targetRealita = totalUangSyahriah + (trxSumByRapbmId[item.id] || 0);
       }
       // Sync dari Buku Kas Real-time
       else {
         targetRealita = trxSumByRapbmId[item.id] || 0;
       }
 
-      if (item.realita !== targetRealita) {
+      // For PENERIMAAN items, ensure jumlahAnggaran reflects targetRealita if zero or updated
+      let targetAnggaran = item.jumlahAnggaran;
+      if (item.type === 'PENERIMAAN' && (item.jumlahAnggaran === 0 || item.jumlahAnggaran < targetRealita)) {
+        targetAnggaran = targetRealita;
+      }
+
+      if (item.realita !== targetRealita || item.jumlahAnggaran !== targetAnggaran) {
         hasChanges = true;
-        const persentase = item.jumlahAnggaran > 0 ? Math.round((targetRealita / item.jumlahAnggaran) * 100) : 100;
+        const calcAnggaran = targetAnggaran > 0 ? targetAnggaran : targetRealita;
+        const persentase = calcAnggaran > 0 ? Math.round((targetRealita / calcAnggaran) * 100) : 100;
 
         // Persist change to backend database
         apiFetch(`/api/rapbm/${item.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ realita: targetRealita, persentase }),
+          body: JSON.stringify({ jumlahAnggaran: targetAnggaran, realita: targetRealita, persentase }),
         }).catch((err) => console.error('Failed to sync RAPBM item to backend:', err));
 
-        return { ...item, realita: targetRealita, persentase };
+        return { ...item, jumlahAnggaran: targetAnggaran, realita: targetRealita, persentase };
       }
 
       return item;

@@ -57,11 +57,19 @@ const InlineNumberCell: React.FC<InlineNumberCellProps> = ({
     <input
       type="number"
       value={val}
-      onFocus={() => setIsFocused(true)}
+      onFocus={(e) => {
+        setIsFocused(true);
+        e.target.select();
+      }}
+      onClick={(e) => {
+        if (!isFocused) {
+          e.currentTarget.select();
+        }
+      }}
       onChange={(e) => setVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className={`w-full py-1 px-1.5 border border-slate-200 hover:border-emerald-400 focus:border-emerald-500 rounded text-right text-xs bg-slate-50/60 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-semibold transition ${isCurrencyColor} ${className}`}
+      className={`w-full py-1 px-2 border border-slate-300 hover:border-emerald-500 focus:border-emerald-600 rounded-lg text-right text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-bold transition shadow-2xs ${isCurrencyColor} ${className}`}
     />
   );
 };
@@ -103,11 +111,13 @@ const InlineTextCell: React.FC<InlineTextCellProps> = ({
     <input
       type="text"
       value={val}
-      onFocus={() => setIsFocused(true)}
+      onFocus={(e) => {
+        setIsFocused(true);
+      }}
       onChange={(e) => setVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className={`w-full py-1 px-1.5 border border-slate-200 hover:border-emerald-400 focus:border-emerald-500 rounded text-xs bg-slate-50/60 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium transition ${className}`}
+      className={`w-full py-1 px-2 border border-slate-300 hover:border-emerald-500 focus:border-emerald-600 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-medium transition shadow-2xs ${className}`}
     />
   );
 };
@@ -577,16 +587,19 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                       {p ? (
                         directEditMode ? (
                           <InlineNumberCell
-                            value={p.jumlahAnggaran}
+                            value={p.realita > 0 ? p.realita : p.jumlahAnggaran}
                             isCurrencyColor="text-emerald-800"
-                            onSave={(val) => onUpdateItem(p.id, val, p.realita, p.uraian)}
+                            onSave={(val) => onUpdateItem(p.id, val, val, p.uraian)}
                           />
                         ) : editingId === p.id ? (
                           <div className="flex items-center space-x-1 justify-end">
                             <input
                               type="number"
                               value={editAnggaran}
-                              onChange={(e) => setEditAnggaran(Number(e.target.value))}
+                              onChange={(e) => {
+                                setEditAnggaran(Number(e.target.value));
+                                setEditRealita(Number(e.target.value));
+                              }}
                               className="w-24 p-1 border border-emerald-400 rounded text-right text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
                             <button
@@ -609,8 +622,8 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <div onClick={() => startEdit(p)} className="cursor-pointer hover:text-emerald-900 py-0.5 px-1">
-                            {formatNumber(p.jumlahAnggaran)}
+                          <div onClick={() => startEdit(p)} className="cursor-pointer hover:text-emerald-900 py-0.5 px-1 font-bold">
+                            {formatNumber(p.realita > 0 ? p.realita : p.jumlahAnggaran)}
                           </div>
                         )
                       ) : ''}
