@@ -150,6 +150,91 @@ export default function App() {
     );
     const totalUangSyahriah = activeYearSyahriah.reduce((sum, p) => sum + (p.amount || 0), 0);
 
+    // Filter real-time cashbook transactions for active year
+    const activeYearTransactions = transactions.filter(
+      (t) => t.tahunAjaran === selectedYear || (!t.tahunAjaran && selectedYear === '1446 - 1447 H.')
+    );
+
+    // Filter active year RAPBM items
+    const activeRapbm = rapbmData.filter(
+      (item) => item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.')
+    );
+
+    // Sum of amounts grouped by rapbmItemId
+    const trxSumByRapbmId: Record<string, number> = {};
+
+    activeYearTransactions.forEach((t) => {
+      const isIncome = t.type === 'IN';
+      const targetType = isIncome ? 'PENERIMAAN' : 'PENGELUARAN';
+      const typeFilteredRapbm = activeRapbm.filter((item) => item.type === targetType);
+
+      if (typeFilteredRapbm.length === 0) return;
+
+      let matchedItem: RAPBMItem | undefined = undefined;
+
+      // 1. Direct code or ID or exact uraian match
+      if (t.rapbmCode) {
+        const codeTrim = t.rapbmCode.trim().toLowerCase();
+        matchedItem = typeFilteredRapbm.find(
+          (item) =>
+            (item.noKode && item.noKode.trim().toLowerCase() === codeTrim) ||
+            (item.id && item.id.trim().toLowerCase() === codeTrim) ||
+            (item.uraian && item.uraian.trim().toLowerCase() === codeTrim)
+        );
+      }
+
+      // 2. Exact or substring match on description vs uraian
+      if (!matchedItem && t.description) {
+        const tDesc = t.description.toLowerCase().trim();
+        matchedItem = typeFilteredRapbm.find((item) => {
+          const u = (item.uraian || '').toLowerCase().trim();
+          return u && (tDesc === u || tDesc.includes(u) || u.includes(tDesc));
+        });
+      }
+
+      // 3. Keyword token matching
+      if (!matchedItem && t.description) {
+        const descTokens = t.description.toLowerCase().split(/[\s,.\/-]+/).filter((w) => w.length >= 3);
+        matchedItem = typeFilteredRapbm.find((item) => {
+          const itemTokens = (item.uraian || '').toLowerCase().split(/[\s,.\/-]+/).filter((w) => w.length >= 3);
+          return itemTokens.some((iToken) => descTokens.some((dToken) => dToken.includes(iToken) || iToken.includes(dToken)));
+        });
+      }
+
+      // 4. Category match
+      if (!matchedItem && t.category) {
+        const tCat = t.category.toLowerCase().trim();
+        matchedItem = typeFilteredRapbm.find((item) => {
+          const cName = (item.categoryName || '').toLowerCase().trim();
+          const cCode = (item.categoryCode || '').toLowerCase().trim();
+          return tCat === cName || tCat === cCode;
+        });
+      }
+
+      // 5. Fallback item if still unmatched
+      if (!matchedItem) {
+        if (!isIncome) {
+          // Fallback to Pengeluaran insidentil or last item
+          matchedItem =
+            typeFilteredRapbm.find((item) => item.noKode === '5.3' || item.uraian.toLowerCase().includes('insidentil')) ||
+            typeFilteredRapbm[typeFilteredRapbm.length - 1];
+        } else {
+          // Fallback to Penerimaan Lain / Jam'iyyah or last item
+          matchedItem =
+            typeFilteredRapbm.find(
+              (item) =>
+                item.noKode === '6.3' ||
+                item.uraian.toLowerCase().includes('jam\'iyyah') ||
+                item.uraian.toLowerCase().includes('lain')
+            ) || typeFilteredRapbm[typeFilteredRapbm.length - 1];
+        }
+      }
+
+      if (matchedItem) {
+        trxSumByRapbmId[matchedItem.id] = (trxSumByRapbmId[matchedItem.id] || 0) + (t.amount || 0);
+      }
+    });
+
     let hasChanges = false;
     const updated = rapbmData.map((item) => {
       const isThisYear = item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.');
@@ -165,42 +250,22 @@ export default function App() {
       else if (item.type === 'PENERIMAAN' && (item.noKode === '2.1' || item.uraian.toLowerCase().includes('syahri'))) {
         targetRealita = totalUangSyahriah;
       }
-      // Sync dari Buku Kas Real-time untuk transaksi RAPBM lainnya
+      // Sync dari Buku Kas Real-time
       else {
-        const matchingTrx = transactions.filter((t) => {
-          const isTrxThisYear = t.tahunAjaran === selectedYear || (!t.tahunAjaran && selectedYear === '1446 - 1447 H.');
-          if (!isTrxThisYear) return false;
-
-          const isTypeMatch = item.type === 'PENERIMAAN' ? t.type === 'IN' : t.type === 'OUT';
-          if (!isTypeMatch) return false;
-
-          // Direct code match
-          if (t.rapbmCode) {
-            return t.rapbmCode === item.noKode || t.rapbmCode === item.id;
-          }
-
-          // Fallback text / category match
-          const tDesc = (t.description || '').toLowerCase().trim();
-          const itemUraian = (item.uraian || '').toLowerCase().trim();
-          const tCat = (t.category || '').toLowerCase().trim();
-          const itemCat = (item.categoryName || '').toLowerCase().trim();
-
-          if (tDesc && itemUraian && (tDesc === itemUraian || tDesc.includes(itemUraian) || itemUraian.includes(tDesc))) {
-            return true;
-          }
-          if (tCat && itemCat && tCat === itemCat && tDesc === itemUraian) {
-            return true;
-          }
-
-          return false;
-        });
-
-        targetRealita = matchingTrx.reduce((sum, t) => sum + (t.amount || 0), 0);
+        targetRealita = trxSumByRapbmId[item.id] || 0;
       }
 
       if (item.realita !== targetRealita) {
         hasChanges = true;
         const persentase = item.jumlahAnggaran > 0 ? Math.round((targetRealita / item.jumlahAnggaran) * 100) : 100;
+
+        // Persist change to backend database
+        apiFetch(`/api/rapbm/${item.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ realita: targetRealita, persentase }),
+        }).catch((err) => console.error('Failed to sync RAPBM item to backend:', err));
+
         return { ...item, realita: targetRealita, persentase };
       }
 
@@ -210,7 +275,7 @@ export default function App() {
     if (hasChanges) {
       setRapbmData(updated);
     }
-  }, [payrolls, studentPayments, transactions, selectedYear, rapbmData.length]);
+  }, [payrolls, studentPayments, transactions, selectedYear]);
 
   // Filter RAPBM for current selected year
   const currentYearRapbm = rapbmData.filter(

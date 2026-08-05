@@ -117,7 +117,7 @@ export const CashBook: React.FC<CashBookProps> = ({
     setSelectedRapbmCode(code);
     const item = rapbmData.find(
       (r) =>
-        r.noKode === code &&
+        (r.noKode === code || r.id === code) &&
         (!selectedYear || r.tahunAjaran === selectedYear || (!r.tahunAjaran && selectedYear === '1446 - 1447 H.'))
     );
     if (item) {
@@ -529,10 +529,10 @@ export const CashBook: React.FC<CashBookProps> = ({
                     onChange={(e) => handleRapbmCodeChange(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">-- Tanpa Kode RAPBM (Lain-lain) --</option>
+                    <option value="">-- Tanpa Kode RAPBM (Otomatis Diarahkan Ke Item Terkait) --</option>
                     {availableRapbmItems.map((item) => (
-                      <option key={item.id} value={item.noKode}>
-                        {item.noKode} - {item.uraian}
+                      <option key={item.id} value={item.noKode || item.id}>
+                        {item.noKode ? `${item.noKode} - ` : ''}{item.uraian} ({item.categoryName})
                       </option>
                     ))}
                   </select>
