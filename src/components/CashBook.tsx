@@ -19,8 +19,12 @@ interface CashBookProps {
   madrasah: MadrasahInfo;
   transactions: Transaction[];
   rapbmData: RAPBMItem[];
+  selectedYear?: string;
+  availableYears?: string[];
+  onSelectYear?: (year: string) => void;
   onAddTransaction: (trx: Omit<Transaction, 'id'>) => Promise<void>;
   onDeleteTransaction: (id: string) => Promise<void>;
+  onDeleteAllTransactions?: () => Promise<void>;
   onAddRapbmItem?: (item: Omit<RAPBMItem, 'id'>) => Promise<void>;
   onExportCashflowPDF: () => void;
   isOpenModal: boolean;
@@ -31,8 +35,12 @@ export const CashBook: React.FC<CashBookProps> = ({
   madrasah,
   transactions,
   rapbmData,
+  selectedYear,
+  availableYears,
+  onSelectYear,
   onAddTransaction,
   onDeleteTransaction,
+  onDeleteAllTransactions,
   onAddRapbmItem,
   onExportCashflowPDF,
   isOpenModal,
@@ -40,6 +48,12 @@ export const CashBook: React.FC<CashBookProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'IN' | 'OUT'>('ALL');
+
+  // Filter transactions for current selected year
+  const currentYearTransactions = transactions.filter((t) => {
+    if (!selectedYear) return true;
+    return t.tahunAjaran === selectedYear || (!t.tahunAjaran && selectedYear === '1446 - 1447 H.');
+  });
 
   // New Transaction Form State
   const [trxType, setTrxType] = useState<'IN' | 'OUT'>('OUT');
@@ -61,10 +75,12 @@ export const CashBook: React.FC<CashBookProps> = ({
 
   const calculatedHijri = getHijriDate(dateGregorian, madrasah.hijriOffsetDays);
 
-  // Filter RAPBM options based on selected transaction type
-  const availableRapbmItems = rapbmData.filter((item) =>
-    trxType === 'IN' ? item.type === 'PENERIMAAN' : item.type === 'PENGELUARAN'
-  );
+  // Filter RAPBM options based on selected transaction type & active year
+  const availableRapbmItems = rapbmData.filter((item) => {
+    const isYearMatch = !selectedYear || item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.');
+    const isTypeMatch = trxType === 'IN' ? item.type === 'PENERIMAAN' : item.type === 'PENGELUARAN';
+    return isYearMatch && isTypeMatch;
+  });
 
   const handleCreateNewRapbmItem = async () => {
     if (!newUraianRapbm.trim()) return;
@@ -73,7 +89,7 @@ export const CashBook: React.FC<CashBookProps> = ({
 
     if (onAddRapbmItem) {
       await onAddRapbmItem({
-        tahunAjaran: madrasah.activeYear || '1446 - 1447 H.',
+        tahunAjaran: selectedYear || madrasah.activeYear || '1446 - 1447 H.',
         type: trxType === 'IN' ? 'PENERIMAAN' : 'PENGELUARAN',
         categoryCode: 'LAIN',
         categoryName: catName,
@@ -99,7 +115,11 @@ export const CashBook: React.FC<CashBookProps> = ({
 
   const handleRapbmCodeChange = (code: string) => {
     setSelectedRapbmCode(code);
-    const item = rapbmData.find((r) => r.noKode === code);
+    const item = rapbmData.find(
+      (r) =>
+        r.noKode === code &&
+        (!selectedYear || r.tahunAjaran === selectedYear || (!r.tahunAjaran && selectedYear === '1446 - 1447 H.'))
+    );
     if (item) {
       setCategory(item.categoryName);
       setDescription(item.uraian);
@@ -115,6 +135,7 @@ export const CashBook: React.FC<CashBookProps> = ({
       await onAddTransaction({
         dateGregorian,
         dateHijri: calculatedHijri.formatted,
+        tahunAjaran: selectedYear || madrasah.activeYear || '1446 - 1447 H.',
         type: trxType,
         rapbmCode: selectedRapbmCode || undefined,
         category: category || (trxType === 'IN' ? 'PENERIMAAN LAIN' : 'PENGELUARAN LAIN'),
@@ -134,7 +155,7 @@ export const CashBook: React.FC<CashBookProps> = ({
     }
   };
 
-  const filteredTransactions = transactions.filter((t) => {
+  const filteredTransactions = currentYearTransactions.filter((t) => {
     const term = searchTerm.trim().toLowerCase();
     const matchesSearch =
       !term ||
@@ -149,10 +170,10 @@ export const CashBook: React.FC<CashBookProps> = ({
     return matchesSearch && matchesType;
   });
 
-  // Totals
+  // Totals for selected year
   let totalIn = 0;
   let totalOut = 0;
-  transactions.forEach((t) => {
+  currentYearTransactions.forEach((t) => {
     if (t.type === 'IN') totalIn += t.amount;
     if (t.type === 'OUT') totalOut += t.amount;
   });
@@ -167,16 +188,41 @@ export const CashBook: React.FC<CashBookProps> = ({
             <div className="flex items-center space-x-2 text-emerald-700 font-bold text-xs uppercase tracking-wider">
               <BookOpenCheck className="w-4 h-4" />
               <span>Buku Kas Umum Real-time</span>
+              {selectedYear && (
+                <span className="ml-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-bold text-[11px] border border-emerald-300 normal-case tracking-normal">
+                  Tahun Ajaran: {selectedYear}
+                </span>
+              )}
             </div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight mt-1">
               Pencatatan Arus Kas & Transaksi Keuangan
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Jurnal pengeluaran dan penerimaan dana real-time terintegrasi dengan kode RAPBM 1446-1447 H.
+              Jurnal pengeluaran & penerimaan dana terintegrasi dengan RAPBM Tahun Ajaran {selectedYear || madrasah.activeYear || '1446 - 1447 H.'}
             </p>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {onDeleteAllTransactions && transactions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    confirm(
+                      'Apakah Anda yakin ingin menghapus SEMUA transaksi di SEMUA tahun ajaran?\n\nTindakan ini tidak dapat dibatalkan!'
+                    )
+                  ) {
+                    onDeleteAllTransactions();
+                  }
+                }}
+                className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-semibold rounded-xl text-xs transition flex items-center space-x-1.5"
+                title="Hapus semua data transaksi kas"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Hapus Semua Transaksi</span>
+              </button>
+            )}
+
             <button
               id="btn-export-cashflow-pdf"
               onClick={onExportCashflowPDF}

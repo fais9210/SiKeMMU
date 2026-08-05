@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Settings, Save, X, Building2, UserCheck, Moon, Image as ImageIcon, Upload } from 'lucide-react';
+import { Settings, Save, X, Building2, UserCheck, Moon, Image as ImageIcon, Upload, Download, Database, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { MadrasahInfo } from '../types';
 import { getHijriDate } from '../utils/hijri';
 
@@ -7,9 +7,17 @@ interface SettingsModalProps {
   madrasah: MadrasahInfo;
   onSave: (info: MadrasahInfo) => Promise<void>;
   onClose: () => void;
+  onExportBackup?: () => Promise<void>;
+  onRestoreBackup?: (backupData: any) => Promise<void>;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ madrasah, onSave, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  madrasah,
+  onSave,
+  onClose,
+  onExportBackup,
+  onRestoreBackup,
+}) => {
   const [namaMadrasah, setNamaMadrasah] = useState(madrasah.namaMadrasah);
   const [alamat, setAlamat] = useState(madrasah.alamat);
   const [kecamatan, setKecamatan] = useState(madrasah.kecamatan);
@@ -23,7 +31,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ madrasah, onSave, 
   const [logoUrl, setLogoUrl] = useState(madrasah.logoUrl || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Backup & Restore state
+  const [isExporting, setIsExporting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   const previewHijri = getHijriDate(new Date(), hijriOffsetDays);
 
@@ -36,6 +50,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ madrasah, onSave, 
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleBackupExportClick = async () => {
+    if (!onExportBackup) return;
+    setIsExporting(true);
+    setRestoreMessage(null);
+    try {
+      await onExportBackup();
+      setRestoreMessage({ type: 'success', text: 'File cadangan JSON berhasil diunduh!' });
+    } catch (err) {
+      console.error(err);
+      setRestoreMessage({ type: 'error', text: 'Gagal mengunduh file cadangan.' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleBackupRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const jsonContent = JSON.parse(event.target?.result as string);
+        if (!jsonContent || typeof jsonContent !== 'object') {
+          throw new Error('Format file JSON tidak valid.');
+        }
+
+        const confirmRestore = confirm(
+          'Apakah Anda yakin ingin memulihkan (restore) data dari file ini?\nData yang ada saat ini akan diperbarui dengan data dari file cadangan.'
+        );
+
+        if (!confirmRestore) {
+          if (backupInputRef.current) backupInputRef.current.value = '';
+          return;
+        }
+
+        setIsRestoring(true);
+        setRestoreMessage(null);
+
+        if (onRestoreBackup) {
+          await onRestoreBackup(jsonContent);
+          setRestoreMessage({
+            type: 'success',
+            text: 'Data berhasil dipulihkan dari file backup!',
+          });
+        }
+      } catch (err: any) {
+        console.error('Error parsing restore file:', err);
+        setRestoreMessage({
+          type: 'error',
+          text: `Gagal memulihkan data: ${err.message || 'Format JSON tidak sesuai'}`,
+        });
+      } finally {
+        setIsRestoring(false);
+        if (backupInputRef.current) backupInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -237,6 +311,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ madrasah, onSave, 
               <p className="text-[11px] text-amber-800 mt-1">
                 Gunakan geseran ini jika ada selisih 1-2 hari hasil rukyatul hilal lokal dengan penanggalan standar.
               </p>
+            </div>
+          </div>
+
+          {/* Section 4: Backup & Restore Data System */}
+          <div className="space-y-3 bg-emerald-50/70 p-4 rounded-xl border border-emerald-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 font-bold text-emerald-950 text-xs">
+                <Database className="w-4 h-4 text-emerald-700" />
+                <span>Backup & Restore Data Sistem</span>
+              </div>
+              <span className="text-[10px] bg-emerald-200/80 text-emerald-900 font-bold px-2 py-0.5 rounded-full">
+                Format JSON
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Unduh cadangan data lengkap (Identitas, RAPBM, Transaksi, Guru, Slip Gaji, Santri, Syahriyah, Inventaris) untuk arsip aman atau ekspor ulang ke perangkat lain.
+            </p>
+
+            {restoreMessage && (
+              <div
+                className={`p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+                  restoreMessage.type === 'success'
+                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                    : 'bg-rose-100 text-rose-900 border border-rose-300'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span>{restoreMessage.text}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleBackupExportClick}
+                disabled={isExporting}
+                className="w-full py-2.5 px-3 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl text-xs transition shadow-xs flex items-center justify-center space-x-2 disabled:opacity-50"
+              >
+                {isExporting ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 text-amber-300" />
+                )}
+                <span>Unduh Backup Data (.json)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => backupInputRef.current?.click()}
+                disabled={isRestoring}
+                className="w-full py-2.5 px-3 bg-white hover:bg-emerald-50 border border-emerald-400 text-emerald-900 font-bold rounded-xl text-xs transition shadow-xs flex items-center justify-center space-x-2 disabled:opacity-50"
+              >
+                {isRestoring ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-emerald-700" />
+                ) : (
+                  <Upload className="w-4 h-4 text-emerald-700" />
+                )}
+                <span>Pulihkan / Restore Data</span>
+              </button>
+
+              <input
+                type="file"
+                ref={backupInputRef}
+                onChange={handleBackupRestoreFile}
+                accept=".json,application/json"
+                className="hidden"
+              />
             </div>
           </div>
 

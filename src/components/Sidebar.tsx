@@ -46,12 +46,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, unpai
       icon: Coins,
     },
 
-    // {
-    //   id: 'cashbook' as ActiveTab,
-    //   label: 'Buku Kas Real-time',
-    //   description: 'Jurnal Masuk & Keluar',
-    //   icon: BookOpenCheck,
-    // },
+    {
+      id: 'cashbook' as ActiveTab,
+      label: 'Buku Kas Real-time',
+      description: 'Jurnal Masuk & Keluar',
+      icon: BookOpenCheck,
+    },
     {
       id: 'payroll' as ActiveTab,
       label: 'Slip Gaji Bisyaroh',

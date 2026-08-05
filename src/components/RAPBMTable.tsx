@@ -119,7 +119,7 @@ interface RAPBMTableProps {
   onSelectYear: (year: string) => void;
   onAddNewYear: (newYear: string) => void;
   rapbmData: RAPBMItem[];
-  onUpdateItem: (id: string, jumlahAnggaran: number, realita: number, uraian?: string) => Promise<void>;
+  onUpdateItem: (id: string, jumlahAnggaran: number, realita: number, uraian?: string, noKode?: string, categoryName?: string) => Promise<void>;
   onAddItem?: (item: Omit<RAPBMItem, 'id'>) => Promise<void>;
   onDeleteItem?: (id: string) => Promise<void>;
   onExportPDF: (customTanggal?: string) => void;
@@ -153,6 +153,42 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
   const [newAnggaran, setNewAnggaran] = useState<number | ''>('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isSubmittingNew, setIsSubmittingNew] = useState(false);
+
+  // Modal Full Edit Item State
+  const [fullEditItem, setFullEditItem] = useState<RAPBMItem | null>(null);
+  const [fullEditKode, setFullEditKode] = useState('');
+  const [fullEditCategory, setFullEditCategory] = useState('');
+  const [fullEditUraian, setFullEditUraian] = useState('');
+  const [fullEditAnggaran, setFullEditAnggaran] = useState<number>(0);
+  const [fullEditRealita, setFullEditRealita] = useState<number>(0);
+
+  const openFullEditModal = (item: RAPBMItem) => {
+    setFullEditItem(item);
+    setFullEditKode(item.noKode);
+    setFullEditCategory(item.categoryName);
+    setFullEditUraian(item.uraian);
+    setFullEditAnggaran(item.jumlahAnggaran);
+    setFullEditRealita(item.realita);
+  };
+
+  const handleSaveFullEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullEditItem) return;
+    setIsSubmitting(true);
+    try {
+      await onUpdateItem(
+        fullEditItem.id,
+        fullEditAnggaran,
+        fullEditRealita,
+        fullEditUraian,
+        fullEditKode,
+        fullEditCategory
+      );
+      setFullEditItem(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const openAddItemModal = (type: 'PENERIMAAN' | 'PENGELUARAN') => {
     setModalType(type);
@@ -479,35 +515,62 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     </td>
                     <td className="py-2 px-2 border-r font-medium leading-relaxed">
                       {p ? (
-                        directEditMode ? (
-                          <InlineTextCell
-                            value={p.uraian}
-                            onSave={(val) => onUpdateItem(p.id, p.jumlahAnggaran, p.realita, val)}
-                          />
-                        ) : editingId === p.id ? (
-                          <textarea
-                            rows={2}
-                            value={editUraian}
-                            onChange={(e) => setEditUraian(e.target.value)}
-                            className="w-full p-1 border border-emerald-400 rounded text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"
-                            placeholder="Uraian penerimaan"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEdit(p)}
-                            className="flex items-start justify-between group gap-2 cursor-pointer hover:text-emerald-700 py-0.5 px-1"
-                          >
-                            <span className="whitespace-normal break-words">{p.uraian}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); startEdit(p); }}
-                              title="Edit Penerimaan"
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition text-slate-500 flex-shrink-0 mt-0.5"
+                        <div className="space-y-1">
+                          {directEditMode ? (
+                            <InlineTextCell
+                              value={p.uraian}
+                              onSave={(val) => onUpdateItem(p.id, p.jumlahAnggaran, p.realita, val)}
+                            />
+                          ) : editingId === p.id ? (
+                            <textarea
+                              rows={2}
+                              value={editUraian}
+                              onChange={(e) => setEditUraian(e.target.value)}
+                              className="w-full p-1 border border-emerald-400 rounded text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"
+                              placeholder="Uraian penerimaan"
+                            />
+                          ) : (
+                            <div
+                              onClick={() => startEdit(p)}
+                              className="flex items-start justify-between group gap-2 cursor-pointer hover:text-emerald-700 py-0.5 px-1"
                             >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )
+                              <span className="whitespace-normal break-words">{p.uraian}</span>
+                              <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); openFullEditModal(p); }}
+                                  title="Edit Detail Item"
+                                  className="p-1 hover:bg-slate-200 rounded text-slate-600"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                {onDeleteItem && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); if (confirm(`Hapus item penerimaan "${p.uraian}"?`)) onDeleteItem(p.id); }}
+                                    title="Hapus Item"
+                                    className="p-1 hover:bg-rose-100 rounded text-rose-600"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {(p.noKode === '2.1' || p.uraian.toLowerCase().includes('uang syahriyah')) ? (
+                            <div className="flex items-center mt-0.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 shadow-2xs" title="Realita otomatis disinkronkan dengan total Pembayaran Syahriah santri tahun ini">
+                                ⚡ Sync Syahriah
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center mt-0.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-300 shadow-2xs" title="Realita otomatis dicatat dari transaksi Buku Kas Real-time tahun ini">
+                                ⚡ Sync Buku Kas
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       ) : ''}
                     </td>
                     <td className="py-2 px-2 text-right border-r font-semibold text-emerald-800 whitespace-nowrap">
@@ -562,35 +625,62 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     </td>
                     <td className="py-2 px-2 border-r font-medium leading-relaxed">
                       {k ? (
-                        directEditMode ? (
-                          <InlineTextCell
-                            value={k.uraian}
-                            onSave={(val) => onUpdateItem(k.id, k.jumlahAnggaran, k.realita, val)}
-                          />
-                        ) : editingId === k.id ? (
-                          <textarea
-                            rows={2}
-                            value={editUraian}
-                            onChange={(e) => setEditUraian(e.target.value)}
-                            className="w-full p-1 border border-slate-300 rounded text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"
-                            placeholder="Uraian pengeluaran"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEdit(k)}
-                            className="flex items-start justify-between group gap-2 cursor-pointer hover:text-emerald-700 py-0.5 px-1"
-                          >
-                            <span className="whitespace-normal break-words">{k.uraian}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); startEdit(k); }}
-                              title="Edit Pengeluaran"
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition text-slate-500 flex-shrink-0 mt-0.5"
+                        <div className="space-y-1">
+                          {directEditMode ? (
+                            <InlineTextCell
+                              value={k.uraian}
+                              onSave={(val) => onUpdateItem(k.id, k.jumlahAnggaran, k.realita, val)}
+                            />
+                          ) : editingId === k.id ? (
+                            <textarea
+                              rows={2}
+                              value={editUraian}
+                              onChange={(e) => setEditUraian(e.target.value)}
+                              className="w-full p-1 border border-slate-300 rounded text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"
+                              placeholder="Uraian pengeluaran"
+                            />
+                          ) : (
+                            <div
+                              onClick={() => startEdit(k)}
+                              className="flex items-start justify-between group gap-2 cursor-pointer hover:text-emerald-700 py-0.5 px-1"
                             >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )
+                              <span className="whitespace-normal break-words">{k.uraian}</span>
+                              <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); openFullEditModal(k); }}
+                                  title="Edit Detail Item"
+                                  className="p-1 hover:bg-slate-200 rounded text-slate-600"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                {onDeleteItem && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); if (confirm(`Hapus item pengeluaran "${k.uraian}"?`)) onDeleteItem(k.id); }}
+                                    title="Hapus Item"
+                                    className="p-1 hover:bg-rose-100 rounded text-rose-600"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {(k.noKode === '1.1' || k.uraian.toLowerCase().includes('bisyaroh guru')) ? (
+                            <div className="flex items-center mt-0.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold border border-amber-300 shadow-2xs" title="Realita otomatis disinkronkan dengan total Slip Gaji Guru tahun ini">
+                                ⚡ Sync Slip Gaji
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center mt-0.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-300 shadow-2xs" title="Realita otomatis dicatat dari transaksi Buku Kas Real-time tahun ini">
+                                ⚡ Sync Buku Kas
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       ) : ''}
                     </td>
 
@@ -904,6 +994,132 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                   className="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-800 transition shadow-sm disabled:opacity-50"
                 >
                   {isSubmittingNew ? 'Menyimpan...' : 'Simpan Item RAPBM'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Item RAPBM */}
+      {fullEditItem && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 bg-emerald-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-amber-100 flex items-center gap-1.5">
+                  <Edit2 className="w-4 h-4 text-amber-400" />
+                  Edit Item RAPBM ({fullEditItem.type})
+                </h3>
+                <p className="text-xs text-emerald-300">
+                  Kode: <span className="font-mono font-bold">{fullEditItem.noKode}</span> | TA {selectedYear}
+                </p>
+              </div>
+              <button
+                onClick={() => setFullEditItem(null)}
+                className="p-1 text-emerald-300 hover:text-white rounded"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveFullEdit} className="p-5 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Nomor / Kode RAPBM
+                  </label>
+                  <input
+                    type="text"
+                    value={fullEditKode}
+                    onChange={(e) => setFullEditKode(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Kategori / Group
+                  </label>
+                  <input
+                    type="text"
+                    value={fullEditCategory}
+                    onChange={(e) => setFullEditCategory(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Nama / Uraian Anggaran *
+                </label>
+                <textarea
+                  rows={2}
+                  value={fullEditUraian}
+                  onChange={(e) => setFullEditUraian(e.target.value)}
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Nominal Anggaran (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    value={fullEditAnggaran}
+                    onChange={(e) => setFullEditAnggaran(Number(e.target.value))}
+                    min={0}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Nominal Realita (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    value={fullEditRealita}
+                    onChange={(e) => setFullEditRealita(Number(e.target.value))}
+                    min={0}
+                    disabled={
+                      (fullEditItem.type === 'PENGELUARAN' && (fullEditItem.noKode === '1.1' || fullEditItem.uraian.toLowerCase().includes('bisyaroh guru'))) ||
+                      (fullEditItem.type === 'PENERIMAAN' && (fullEditItem.noKode === '2.1' || fullEditItem.uraian.toLowerCase().includes('uang syahriyah')))
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-amber-800 focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:bg-slate-100"
+                  />
+                  {(fullEditItem.type === 'PENGELUARAN' && (fullEditItem.noKode === '1.1' || fullEditItem.uraian.toLowerCase().includes('bisyaroh guru'))) ? (
+                    <p className="text-[10px] text-amber-700 mt-1 italic font-medium">
+                      * Realita otomatis di-sync dari module Slip Gaji Guru TA {selectedYear}.
+                    </p>
+                  ) : (fullEditItem.type === 'PENERIMAAN' && (fullEditItem.noKode === '2.1' || fullEditItem.uraian.toLowerCase().includes('uang syahriyah'))) ? (
+                    <p className="text-[10px] text-emerald-700 mt-1 italic font-medium">
+                      * Realita otomatis di-sync dari module Pembayaran Syahriah Santri TA {selectedYear}.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-500 mt-1 italic font-medium">
+                      * Realita otomatis dicatat dari transaksi Buku Kas Real-time TA {selectedYear}.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setFullEditItem(null)}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-100 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !fullEditUraian.trim()}
+                  className="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-800 transition shadow-sm disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan Item'}
                 </button>
               </div>
             </form>

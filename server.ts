@@ -151,19 +151,23 @@ async function startServer() {
   app.put('/api/rapbm/:id', requireAuth, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const { jumlahAnggaran, realita, uraian } = req.body;
+      const { jumlahAnggaran, realita, uraian, noKode, categoryName } = req.body;
       const item = await db.select().from(rapbmItems).where(eq(rapbmItems.id, id as string));
       if (item.length > 0) {
         const newAnggaran = jumlahAnggaran !== undefined ? Number(jumlahAnggaran) : item[0].jumlahAnggaran;
         const newRealita = realita !== undefined ? Number(realita) : item[0].realita;
         const persentase = newAnggaran > 0 ? Math.round((newRealita / newAnggaran) * 100) : 100;
         const newUraian = uraian !== undefined ? String(uraian) : item[0].uraian;
+        const newKode = noKode !== undefined ? String(noKode) : item[0].noKode;
+        const newCategory = categoryName !== undefined ? String(categoryName) : item[0].categoryName;
         
         const updated = await db.update(rapbmItems).set({
           jumlahAnggaran: newAnggaran,
           realita: newRealita,
           persentase,
           uraian: newUraian,
+          noKode: newKode,
+          categoryName: newCategory,
         }).where(eq(rapbmItems.id, id as string)).returning();
         return res.json(updated[0]);
       }
@@ -214,6 +218,16 @@ async function startServer() {
       res.status(201).json(inserted[0]);
     } catch (error) {
       res.status(500).json({ error: 'Failed to create transaction' });
+    }
+  });
+
+  app.delete('/api/transactions/all', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      await db.delete(transactions);
+      res.json({ success: true, message: 'Semua transaksi berhasil dihapus' });
+    } catch (error) {
+      console.error('Failed to delete all transactions:', error);
+      res.status(500).json({ error: 'Failed to delete all transactions' });
     }
   });
 
@@ -739,7 +753,126 @@ async function startServer() {
   });
 
 
-  // 6. Hijri Conversion API
+  // 6. Backup & Restore Data
+  app.get('/api/backup/export', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const [
+        settingsData,
+        rapbmData,
+        transactionsData,
+        teachersData,
+        payrollsData,
+        studentsData,
+        studentPaymentsData,
+        inventoryData,
+      ] = await Promise.all([
+        db.select().from(settings),
+        db.select().from(rapbmItems),
+        db.select().from(transactions),
+        db.select().from(teachers),
+        db.select().from(payrollRecords),
+        db.select().from(students),
+        db.select().from(studentPayments),
+        db.select().from(inventory),
+      ]);
+
+      const backupPayload = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        settings: settingsData[0] || null,
+        rapbmItems: rapbmData,
+        transactions: transactionsData,
+        teachers: teachersData,
+        payrollRecords: payrollsData,
+        students: studentsData,
+        studentPayments: studentPaymentsData,
+        inventory: inventoryData,
+      };
+
+      res.json(backupPayload);
+    } catch (error) {
+      console.error('Error exporting backup:', error);
+      res.status(500).json({ error: 'Failed to export backup data' });
+    }
+  });
+
+  app.post('/api/backup/restore', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const backup = req.body;
+      if (!backup || typeof backup !== 'object') {
+        return res.status(400).json({ error: 'Invalid backup format' });
+      }
+
+      // 1. Settings
+      if (backup.settings) {
+        await db.delete(settings);
+        await db.insert(settings).values({ id: 'app-settings', ...backup.settings });
+      }
+
+      // 2. RAPBM
+      if (Array.isArray(backup.rapbmItems)) {
+        await db.delete(rapbmItems);
+        if (backup.rapbmItems.length > 0) {
+          await db.insert(rapbmItems).values(backup.rapbmItems);
+        }
+      }
+
+      // 3. Transactions
+      if (Array.isArray(backup.transactions)) {
+        await db.delete(transactions);
+        if (backup.transactions.length > 0) {
+          await db.insert(transactions).values(backup.transactions);
+        }
+      }
+
+      // 4. Teachers
+      if (Array.isArray(backup.teachers)) {
+        await db.delete(teachers);
+        if (backup.teachers.length > 0) {
+          await db.insert(teachers).values(backup.teachers);
+        }
+      }
+
+      // 5. Payrolls
+      if (Array.isArray(backup.payrollRecords)) {
+        await db.delete(payrollRecords);
+        if (backup.payrollRecords.length > 0) {
+          await db.insert(payrollRecords).values(backup.payrollRecords);
+        }
+      }
+
+      // 6. Students
+      if (Array.isArray(backup.students)) {
+        await db.delete(students);
+        if (backup.students.length > 0) {
+          await db.insert(students).values(backup.students);
+        }
+      }
+
+      // 7. Student Payments
+      if (Array.isArray(backup.studentPayments)) {
+        await db.delete(studentPayments);
+        if (backup.studentPayments.length > 0) {
+          await db.insert(studentPayments).values(backup.studentPayments);
+        }
+      }
+
+      // 8. Inventory
+      if (Array.isArray(backup.inventory)) {
+        await db.delete(inventory);
+        if (backup.inventory.length > 0) {
+          await db.insert(inventory).values(backup.inventory);
+        }
+      }
+
+      res.json({ success: true, message: 'Data berhasil dipulihkan dari backup' });
+    } catch (error) {
+      console.error('Error restoring backup:', error);
+      res.status(500).json({ error: 'Failed to restore backup data' });
+    }
+  });
+
+  // 7. Hijri Conversion API
   app.get('/api/hijri', requireAuth, async (req: AuthRequest, res) => {
     try {
       const dateStr = req.query.date as string;

@@ -132,6 +132,84 @@ export default function App() {
     fetchBackendData();
   }, []);
 
+  // Sync RAPBM Bisyaroh Guru (Pengeluaran), Uang Syahriyah (Penerimaan), dan transaksi Buku Kas Real-time untuk tahun yang aktif
+  useEffect(() => {
+    if (!rapbmData || rapbmData.length === 0) return;
+
+    // Total Bisyaroh Guru (Pengeluaran) dari Slip Gaji Guru tahun aktif
+    const activeYearPayrolls = payrolls.filter(
+      (p) => (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) && p.status !== 'TERTUNDA'
+    );
+    const totalBisyarohGuru = activeYearPayrolls.reduce((sum, p) => sum + (p.bisyarohBersih || 0), 0);
+
+    // Total Uang Syahriyah (Penerimaan) dari Pembayaran Syahriah santri tahun aktif
+    const activeYearSyahriah = studentPayments.filter(
+      (p) => (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) && p.type === 'SYAHRIYAH'
+    );
+    const totalUangSyahriah = activeYearSyahriah.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    let hasChanges = false;
+    const updated = rapbmData.map((item) => {
+      const isThisYear = item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.');
+      if (!isThisYear) return item;
+
+      let targetRealita = item.realita;
+
+      // Sync Bisyaroh Guru (Pengeluaran, Kode 1.1)
+      if (item.type === 'PENGELUARAN' && (item.noKode === '1.1' || item.uraian.toLowerCase().includes('bisyaroh guru'))) {
+        targetRealita = totalBisyarohGuru;
+      }
+      // Sync Uang Syahriyah (Penerimaan, Kode 2.1)
+      else if (item.type === 'PENERIMAAN' && (item.noKode === '2.1' || item.uraian.toLowerCase().includes('uang syahriyah'))) {
+        targetRealita = totalUangSyahriah;
+      }
+      // Sync dari Buku Kas Real-time untuk transaksi RAPBM lainnya
+      else {
+        const matchingTrx = transactions.filter((t) => {
+          const isTrxThisYear = t.tahunAjaran === selectedYear || (!t.tahunAjaran && selectedYear === '1446 - 1447 H.');
+          if (!isTrxThisYear) return false;
+
+          const isTypeMatch = item.type === 'PENERIMAAN' ? t.type === 'IN' : t.type === 'OUT';
+          if (!isTypeMatch) return false;
+
+          // Direct code match
+          if (t.rapbmCode) {
+            return t.rapbmCode === item.noKode || t.rapbmCode === item.id;
+          }
+
+          // Fallback text / category match
+          const tDesc = (t.description || '').toLowerCase().trim();
+          const itemUraian = (item.uraian || '').toLowerCase().trim();
+          const tCat = (t.category || '').toLowerCase().trim();
+          const itemCat = (item.categoryName || '').toLowerCase().trim();
+
+          if (tDesc && itemUraian && (tDesc === itemUraian || tDesc.includes(itemUraian) || itemUraian.includes(tDesc))) {
+            return true;
+          }
+          if (tCat && itemCat && tCat === itemCat && tDesc === itemUraian) {
+            return true;
+          }
+
+          return false;
+        });
+
+        targetRealita = matchingTrx.reduce((sum, t) => sum + (t.amount || 0), 0);
+      }
+
+      if (item.realita !== targetRealita) {
+        hasChanges = true;
+        const persentase = item.jumlahAnggaran > 0 ? Math.round((targetRealita / item.jumlahAnggaran) * 100) : 100;
+        return { ...item, realita: targetRealita, persentase };
+      }
+
+      return item;
+    });
+
+    if (hasChanges) {
+      setRapbmData(updated);
+    }
+  }, [payrolls, studentPayments, transactions, selectedYear, rapbmData.length]);
+
   // Filter RAPBM for current selected year
   const currentYearRapbm = rapbmData.filter(
     (item) => item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.')
@@ -140,6 +218,77 @@ export default function App() {
   const currentYearPayrolls = payrolls.filter(
     (item) => item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.')
   );
+
+  const currentYearTransactions = transactions.filter(
+    (item) => item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.')
+  );
+
+  // Backup & Restore Handlers
+  const handleExportBackup = async () => {
+    try {
+      const res = await apiFetch('/api/backup/export');
+      let data;
+      if (res && res.ok) {
+        data = await res.json();
+      } else {
+        // Fallback to client state
+        data = {
+          version: '1.0',
+          exportedAt: new Date().toISOString(),
+          settings: madrasahInfo,
+          rapbmItems: rapbmData,
+          transactions,
+          teachers,
+          payrollRecords: payrolls,
+          students,
+          studentPayments,
+        };
+      }
+
+      const cleanYearName = (selectedYear || '1446-1447H').replace(/[^a-zA-Z0-9-]/g, '_');
+      const fileName = `backup_madrasah_finance_${cleanYearName}_${new Date().toISOString().split('T')[0]}.json`;
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.href = url;
+      downloadAnchor.download = fileName;
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Export backup failed:', e);
+      throw e;
+    }
+  };
+
+  const handleRestoreBackup = async (backupData: any) => {
+    try {
+      const res = await apiFetch('/api/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(backupData),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Gagal memulihkan data');
+      }
+
+      // Refresh application state
+      await fetchBackendData();
+    } catch (e) {
+      console.error('Restore backup failed:', e);
+      // Fallback local update if backend is offline
+      if (backupData.settings) setMadrasahInfo(backupData.settings);
+      if (Array.isArray(backupData.rapbmItems)) setRapbmData(backupData.rapbmItems);
+      if (Array.isArray(backupData.transactions)) setTransactions(backupData.transactions);
+      if (Array.isArray(backupData.teachers)) setTeachers(backupData.teachers);
+      if (Array.isArray(backupData.payrollRecords)) setPayrolls(backupData.payrollRecords);
+      if (Array.isArray(backupData.students)) setStudents(backupData.students);
+      if (Array.isArray(backupData.studentPayments)) setStudentPayments(backupData.studentPayments);
+    }
+  };
 
   // Year Selection & Addition Handlers
   const handleSelectYear = (year: string) => {
@@ -205,7 +354,9 @@ export default function App() {
     id: string,
     jumlahAnggaran: number,
     realita: number,
-    uraian?: string
+    uraian?: string,
+    noKode?: string,
+    categoryName?: string
   ) => {
     const prevItem = rapbmData.find((item) => item.id === id);
     const newAnggaran = Number(jumlahAnggaran);
@@ -221,6 +372,8 @@ export default function App() {
               realita: newRealita,
               persentase,
               ...(uraian !== undefined ? { uraian } : {}),
+              ...(noKode !== undefined ? { noKode } : {}),
+              ...(categoryName !== undefined ? { categoryName } : {}),
             }
           : item
       )
@@ -234,6 +387,8 @@ export default function App() {
           jumlahAnggaran: newAnggaran,
           realita: newRealita,
           ...(uraian !== undefined ? { uraian } : {}),
+          ...(noKode !== undefined ? { noKode } : {}),
+          ...(categoryName !== undefined ? { categoryName } : {}),
         }),
       });
     } catch (e) {
@@ -369,6 +524,15 @@ export default function App() {
       await apiFetch(`/api/transactions/${id}`, { method: 'DELETE' });
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDeleteAllTransactions = async () => {
+    setTransactions([]);
+    try {
+      await apiFetch('/api/transactions/all', { method: 'DELETE' });
+    } catch (e) {
+      console.error('Error deleting all transactions:', e);
     }
   };
 
@@ -760,9 +924,13 @@ export default function App() {
             <CashBook
               madrasah={activeMadrasahInfo}
               transactions={transactions}
-              rapbmData={currentYearRapbm}
+              rapbmData={rapbmData}
+              selectedYear={selectedYear}
+              availableYears={availableYears}
+              onSelectYear={handleSelectYear}
               onAddTransaction={handleAddTransaction}
               onDeleteTransaction={handleDeleteTransaction}
+              onDeleteAllTransactions={handleDeleteAllTransactions}
               onAddRapbmItem={handleAddRapbmItem}
               onExportCashflowPDF={handleExportCashflowPDF}
               isOpenModal={isNewTrxModalOpen}
@@ -862,6 +1030,8 @@ export default function App() {
           madrasah={madrasahInfo}
           onSave={handleUpdateSettings}
           onClose={() => setIsSettingsOpen(false)}
+          onExportBackup={handleExportBackup}
+          onRestoreBackup={handleRestoreBackup}
         />
       )}
 
