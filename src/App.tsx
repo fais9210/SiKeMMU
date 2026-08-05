@@ -240,20 +240,8 @@ export default function App() {
       const isThisYear = item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.');
       if (!isThisYear) return item;
 
-      let targetRealita = item.realita;
-
-      // Sync Bisyaroh Guru (Pengeluaran, Kode 1.1)
-      if (item.type === 'PENGELUARAN' && (item.noKode === '1.1' || item.uraian.toLowerCase().includes('bisyaroh guru'))) {
-        targetRealita = totalBisyarohGuru + (trxSumByRapbmId[item.id] || 0);
-      }
-      // Sync Uang Syahriyah (Penerimaan, Kode 2.1)
-      else if (item.type === 'PENERIMAAN' && (item.noKode === '2.1' || item.uraian.toLowerCase().includes('syahri'))) {
-        targetRealita = totalUangSyahriah + (trxSumByRapbmId[item.id] || 0);
-      }
-      // Sync dari Buku Kas Real-time
-      else {
-        targetRealita = trxSumByRapbmId[item.id] || 0;
-      }
+      // Sync purely from Real-time Cash Book transactions
+      const targetRealita = trxSumByRapbmId[item.id] || 0;
 
       // For PENERIMAAN items, ensure jumlahAnggaran reflects targetRealita if zero or updated
       let targetAnggaran = item.jumlahAnggaran;
