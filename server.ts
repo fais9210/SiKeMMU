@@ -440,7 +440,7 @@ async function startServer() {
       const treasurerName = settingsData[0]?.treasurerName || 'Unknown';
 
       const isTU = newPayroll.role.toLowerCase().includes('tu') || newPayroll.role.toLowerCase().includes('tata usaha');
-      const rapbmCode = isTU ? '1.3' : '1.1';
+      const rapbmCode = isTU ? '1.2' : '1.1';
       const newTrx = {
         id: `trx-pay-${Date.now()}`,
         tahunAjaran: newPayroll.tahunAjaran,
@@ -449,7 +449,9 @@ async function startServer() {
         type: 'OUT',
         rapbmCode,
         category: 'BISYAROH DAN TUNJANGAN',
-        description: `Bisyaroh Ustadz/ah ${newPayroll.teacherName} (${newPayroll.monthHijri})`,
+        description: isTU
+          ? `Bisyaroh Staf TU ${newPayroll.teacherName} (${newPayroll.monthHijri})`
+          : `Bisyaroh Ustadz/ah ${newPayroll.teacherName} (${newPayroll.monthHijri})`,
         amount: newPayroll.bisyarohBersih,
         recordedBy: treasurerName,
         receiptNumber: `PAY-${newPayroll.id}`,
@@ -478,7 +480,7 @@ async function startServer() {
       }
       await db.delete(payrollRecords);
 
-      const rapbmCodes = ['1.1', '1.3'];
+      const rapbmCodes = ['1.1', '1.2', '1.3'];
       for (const code of rapbmCodes) {
         const items = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, code));
         for (const item of items) {
@@ -732,8 +734,21 @@ async function startServer() {
       // Automatically sync income to Cashbook/Transactions if total > 0
       if (createCashbookEntry && totalAmountBatch > 0) {
         const txId = `tx-syahriah-${Date.now()}`;
-        const rapbmCode = paymentType === 'SYAHRIYAH' ? '2.1' : '6.1';
-        const category = paymentType === 'SYAHRIYAH' ? 'Uang Syahriyah' : `Iuran ${paymentType}`;
+        const pTypeUpper = String(paymentType || '').toUpperCase();
+        let rapbmCode = '2.1';
+        let category = 'PENDAPATAN RUTIN';
+        if (pTypeUpper.includes('IMDA')) {
+          rapbmCode = '2.2';
+          category = 'PENDAPATAN RUTIN';
+        } else if (pTypeUpper.includes('IMNI')) {
+          rapbmCode = '2.3';
+          category = 'PENDAPATAN RUTIN';
+        } else if (pTypeUpper.includes('SYAHRI')) {
+          rapbmCode = '2.1';
+          category = 'PENDAPATAN RUTIN';
+        } else {
+          rapbmCode = '2.1';
+        }
         const description = `Penerimaan ${paymentType} ${kelas} (${payments.length} Murid)`;
         
         await db.insert(transactions).values({

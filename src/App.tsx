@@ -137,15 +137,28 @@ export default function App() {
     fetchBackendData();
   }, []);
 
-  // Sync RAPBM Bisyaroh Guru (Pengeluaran), Uang Syahriyah (Penerimaan), dan transaksi Buku Kas Real-time untuk tahun yang aktif
+  // Sync RAPBM Bisyaroh Guru, Bisyaroh TU, Syahriyah, IMDA, IMNI, dan transaksi Buku Kas Real-time untuk tahun yang aktif
   useEffect(() => {
     if (!rapbmData || rapbmData.length === 0) return;
 
-    // Total Bisyaroh Guru (Pengeluaran) dari Slip Gaji Guru tahun aktif
-    const activeYearPayrolls = payrolls.filter(
-      (p) => (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) && p.status !== 'TERTUNDA'
+    // Total Bisyaroh Guru (Pengeluaran) dari Slip Gaji Guru (non-TU) tahun aktif
+    const activeYearGuruPayrolls = payrolls.filter(
+      (p) =>
+        (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
+        p.status !== 'TERTUNDA' &&
+        !(p.role && (p.role.toLowerCase().includes('tu') || p.role.toLowerCase().includes('tata usaha')))
     );
-    const totalBisyarohGuru = activeYearPayrolls.reduce((sum, p) => sum + (p.bisyarohBersih || 0), 0);
+    const totalBisyarohGuru = activeYearGuruPayrolls.reduce((sum, p) => sum + (p.bisyarohBersih || 0), 0);
+
+    // Total Bisyaroh TU (Pengeluaran) dari Slip Gaji Staf TU tahun aktif
+    const activeYearTUPayrolls = payrolls.filter(
+      (p) =>
+        (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
+        p.status !== 'TERTUNDA' &&
+        p.role &&
+        (p.role.toLowerCase().includes('tu') || p.role.toLowerCase().includes('tata usaha'))
+    );
+    const totalBisyarohTU = activeYearTUPayrolls.reduce((sum, p) => sum + (p.bisyarohBersih || 0), 0);
 
     // Total Uang Syahriyah (Penerimaan) dari Pembayaran Syahriah santri tahun aktif
     const activeYearSyahriah = studentPayments.filter(
@@ -154,6 +167,24 @@ export default function App() {
         (!p.type || p.type.toUpperCase().includes('SYAHRI'))
     );
     const totalUangSyahriah = activeYearSyahriah.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // Total Uang IMDA (Penerimaan) dari Pembayaran IMDA santri tahun aktif
+    const activeYearIMDA = studentPayments.filter(
+      (p) =>
+        (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
+        p.type &&
+        p.type.toUpperCase().includes('IMDA')
+    );
+    const totalUangIMDA = activeYearIMDA.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // Total Uang IMNI (Penerimaan) dari Pembayaran IMNI santri tahun aktif
+    const activeYearIMNI = studentPayments.filter(
+      (p) =>
+        (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
+        p.type &&
+        p.type.toUpperCase().includes('IMNI')
+    );
+    const totalUangIMNI = activeYearIMNI.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     // Filter real-time cashbook transactions for active year
     const activeYearTransactions = transactions.filter(
@@ -245,18 +276,35 @@ export default function App() {
       const isThisYear = item.tahunAjaran === selectedYear || (!item.tahunAjaran && selectedYear === '1446 - 1447 H.');
       if (!isThisYear) return item;
 
-      // Sync purely from Real-time Cash Book transactions
+      // Base realization from Real-time Cash Book
       let targetRealita = trxSumByRapbmId[item.id] || 0;
+
+      // Sync directly from module totals for specific income and expense items
+      if (item.noKode === '2.1' || (item.type === 'PENERIMAAN' && item.uraian.toLowerCase().includes('syahriyah'))) {
+        targetRealita = Math.max(targetRealita, totalUangSyahriah);
+      } else if (item.noKode === '2.2' || (item.type === 'PENERIMAAN' && item.uraian.toUpperCase().includes('IMDA'))) {
+        targetRealita = Math.max(targetRealita, totalUangIMDA);
+      } else if (item.noKode === '2.3' || (item.type === 'PENERIMAAN' && item.uraian.toUpperCase().includes('IMNI'))) {
+        targetRealita = Math.max(targetRealita, totalUangIMNI);
+      } else if (item.noKode === '1.1' || (item.type === 'PENGELUARAN' && item.uraian.toLowerCase().includes('bisyaroh guru'))) {
+        targetRealita = Math.max(targetRealita, totalBisyarohGuru);
+      } else if (item.noKode === '1.2' || (item.type === 'PENGELUARAN' && item.uraian.toLowerCase().includes('bisyaroh tu'))) {
+        targetRealita = Math.max(targetRealita, totalBisyarohTU);
+      }
 
       // Sisa dana dari periode atau tahun ajaran sebelumnya tidak ditampilkan di tahun berikutnya
       if (item.uraian && item.uraian.toUpperCase().includes('SISA TAHUN LALU')) {
         targetRealita = 0;
       }
 
-      // For PENERIMAAN items, ensure jumlahAnggaran matches targetRealita so total PENERIMAAN is 100% synced with Kas Realtime
+      // For PENERIMAAN items, update targetAnggaran if not explicitly set
       let targetAnggaran = item.jumlahAnggaran;
       if (item.type === 'PENERIMAAN') {
-        targetAnggaran = item.uraian && item.uraian.toUpperCase().includes('SISA TAHUN LALU') ? 0 : targetRealita;
+        if (item.uraian && item.uraian.toUpperCase().includes('SISA TAHUN LALU')) {
+          targetAnggaran = 0;
+        } else if (item.jumlahAnggaran <= 0) {
+          targetAnggaran = targetRealita;
+        }
       }
 
       if (item.realita !== targetRealita || item.jumlahAnggaran !== targetAnggaran) {
@@ -719,7 +767,7 @@ export default function App() {
 
     // Add corresponding cashbook expense automatically
     const isTU = newPay.role.toLowerCase().includes('tu') || newPay.role.toLowerCase().includes('tata usaha');
-    const rapbmCode = isTU ? '1.3' : '1.1';
+    const rapbmCode = isTU ? '1.2' : '1.1';
 
     const newTrx: Transaction = {
       id: `trx-pay-${Date.now()}`,
@@ -729,7 +777,9 @@ export default function App() {
       type: 'OUT',
       rapbmCode,
       category: 'BISYAROH DAN TUNJANGAN',
-      description: `Bisyaroh Ustadz/ah ${newPay.teacherName} (${newPay.monthHijri})`,
+      description: isTU
+        ? `Bisyaroh Staf TU ${newPay.teacherName} (${newPay.monthHijri})`
+        : `Bisyaroh Ustadz/ah ${newPay.teacherName} (${newPay.monthHijri})`,
       amount: newPay.bisyarohBersih,
       recordedBy: madrasahInfo.treasurerName,
       receiptNumber: `PAY-${newPay.id}`,
@@ -803,7 +853,7 @@ export default function App() {
 
     setRapbmData((prev) =>
       prev.map((item) => {
-        if (item.noKode === '1.1' || item.noKode === '1.3') {
+        if (item.noKode === '1.1' || item.noKode === '1.2' || item.noKode === '1.3') {
           return { ...item, realita: 0, persentase: 0 };
         }
         return item;

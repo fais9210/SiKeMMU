@@ -15,6 +15,7 @@ import {
   CalendarDays,
   AlertTriangle,
   X,
+  CheckCircle2,
 } from 'lucide-react';
 import { MadrasahInfo, RAPBMItem, Transaction, StudentPayment, PayrollRecord } from '../types';
 import { formatCurrency, getHijriDate } from '../utils/hijri';
@@ -122,6 +123,7 @@ export const CashBook: React.FC<CashBookProps> = ({
   const [amount, setAmount] = useState<number | ''>('');
   const [recordedBy, setRecordedBy] = useState(madrasah.treasurerName);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Quick Add RAPBM Item State
   const [isAddingNewRapbm, setIsAddingNewRapbm] = useState(false);
@@ -169,12 +171,41 @@ export const CashBook: React.FC<CashBookProps> = ({
     setIsAddingNewRapbm(false);
   };
 
+  const handleTypeSwitch = (type: 'IN' | 'OUT') => {
+    setTrxType(type);
+    setSelectedRapbmCode('');
+    setCategory(type === 'IN' ? 'PENDAPATAN RUTIN' : 'PENGELUARAN LAIN');
+    setDescription('');
+    setSuccessMessage(null);
+  };
+
+  React.useEffect(() => {
+    if (isOpenModal) {
+      if (!selectedRapbmCode) {
+        if (trxType === 'OUT' && (!category || category.toUpperCase().includes('PENDAPATAN'))) {
+          setCategory('PENGELUARAN LAIN');
+        } else if (
+          trxType === 'IN' &&
+          (!category ||
+            category.toUpperCase().includes('PENGELUARAN') ||
+            category.toUpperCase().includes('BISYAROH') ||
+            category.toUpperCase().includes('BIAYA'))
+        ) {
+          setCategory('PENDAPATAN RUTIN');
+        }
+      }
+    }
+  }, [isOpenModal, trxType]);
+
   const handleRapbmCodeChange = (code: string) => {
     setSelectedRapbmCode(code);
-    const item = rapbmData.find(
-      (r) =>
-        (r.noKode === code || r.id === code) &&
-        (!selectedYear || r.tahunAjaran === selectedYear || (!r.tahunAjaran && selectedYear === '1446 - 1447 H.'))
+    if (!code) {
+      setCategory(trxType === 'IN' ? 'PENDAPATAN RUTIN' : 'PENGELUARAN LAIN');
+      setDescription('');
+      return;
+    }
+    const item = availableRapbmItems.find(
+      (r) => r.noKode === code || r.id === code
     );
     if (item) {
       setCategory(item.categoryName);
@@ -182,8 +213,7 @@ export const CashBook: React.FC<CashBookProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveTransaction = async (keepOpen: boolean) => {
     if (!description || !amount || Number(amount) <= 0) return;
 
     setIsSubmitting(true);
@@ -201,14 +231,28 @@ export const CashBook: React.FC<CashBookProps> = ({
         receiptNumber: `KW-MU22-${Math.floor(1000 + Math.random() * 9000)}`,
       });
 
-      // Reset Form
+      const savedDesc = description;
+      const savedAmount = amount;
+
+      // Reset form fields for repeated input
       setDescription('');
       setAmount('');
       setSelectedRapbmCode('');
-      setIsOpenModal(false);
+
+      if (keepOpen) {
+        setSuccessMessage(`✓ Transaksi "${savedDesc}" (${formatCurrency(Number(savedAmount))}) berhasil disimpan! Siap input data berikutnya.`);
+      } else {
+        setSuccessMessage(null);
+        setIsOpenModal(false);
+      }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveTransaction(false);
   };
 
   // Period Title Label
@@ -334,7 +378,10 @@ export const CashBook: React.FC<CashBookProps> = ({
 
             <button
               id="btn-open-modal-trx"
-              onClick={() => setIsOpenModal(true)}
+              onClick={() => {
+                setSuccessMessage(null);
+                setIsOpenModal(true);
+              }}
               className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-md shadow-emerald-700/20 text-xs transition flex items-center space-x-2"
             >
               <PlusCircle className="w-4 h-4" />
@@ -739,12 +786,31 @@ export const CashBook: React.FC<CashBookProps> = ({
                 <p className="text-xs text-slate-500">Pencatatan jurnal penerimaan/pengeluaran kas real-time</p>
               </div>
               <button
-                onClick={() => setIsOpenModal(false)}
+                onClick={() => {
+                  setIsOpenModal(false);
+                  setSuccessMessage(null);
+                }}
                 className="p-1 text-slate-400 hover:text-slate-600 rounded"
               >
                 &times;
               </button>
             </div>
+
+            {successMessage && (
+              <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm animate-in fade-in duration-150">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{successMessage}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSuccessMessage(null)}
+                  className="text-emerald-700 hover:text-emerald-950 font-bold ml-2 text-sm"
+                >
+                  &times;
+                </button>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               
@@ -752,10 +818,7 @@ export const CashBook: React.FC<CashBookProps> = ({
               <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
                 <button
                   type="button"
-                  onClick={() => {
-                    setTrxType('OUT');
-                    setSelectedRapbmCode('');
-                  }}
+                  onClick={() => handleTypeSwitch('OUT')}
                   className={`py-2 rounded-lg font-bold text-xs transition ${
                     trxType === 'OUT' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                   }`}
@@ -764,10 +827,7 @@ export const CashBook: React.FC<CashBookProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setTrxType('IN');
-                    setSelectedRapbmCode('');
-                  }}
+                  onClick={() => handleTypeSwitch('IN')}
                   className={`py-2 rounded-lg font-bold text-xs transition ${
                     trxType === 'IN' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                   }`}
@@ -923,21 +983,38 @@ export const CashBook: React.FC<CashBookProps> = ({
               </div>
 
               {/* Submit Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-2 border-t">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t">
                 <button
                   type="button"
-                  onClick={() => setIsOpenModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200"
+                  onClick={() => {
+                    setIsOpenModal(false);
+                    setSuccessMessage(null);
+                  }}
+                  className="px-3.5 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 text-xs sm:text-sm"
                 >
-                  Batal
+                  Selesai / Tutup
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-600 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Simpan...' : 'Simpan Transaksi'}
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    disabled={isSubmitting || !description || !amount || Number(amount) <= 0}
+                    onClick={() => saveTransaction(true)}
+                    className="px-3 sm:px-4 py-2 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold hover:bg-emerald-200 disabled:opacity-50 text-xs sm:text-sm flex items-center space-x-1.5 transition"
+                    title="Simpan transaksi ini dan biarkan form tetap terbuka untuk langsung menginput transaksi berikutnya"
+                  >
+                    <PlusCircle className="w-4 h-4 text-emerald-700" />
+                    <span>Simpan &amp; Input Lagi</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSubmitting || !description || !amount || Number(amount) <= 0}
+                    onClick={() => saveTransaction(false)}
+                    className="px-3 sm:px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-600 disabled:opacity-50 text-xs sm:text-sm flex items-center space-x-1.5 transition shadow-sm"
+                  >
+                    <BookOpenCheck className="w-4 h-4 text-emerald-100" />
+                    <span>{isSubmitting ? 'Simpan...' : 'Simpan & Selesai'}</span>
+                  </button>
+                </div>
               </div>
 
             </form>
