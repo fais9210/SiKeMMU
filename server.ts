@@ -766,9 +766,16 @@ async function startServer() {
         });
 
         // Also update RAPBM realita
-        const existingRapbm = await db.select().from(rapbmItems).where(eq(rapbmItems.noKode, rapbmCode));
-        if (existingRapbm.length > 0) {
-          const item = existingRapbm.find(r => r.tahunAjaran === tahunAjaran) || existingRapbm[0];
+        const existingRapbm = await db.select().from(rapbmItems).where(eq(rapbmItems.type, 'PENERIMAAN'));
+        const item = existingRapbm.find((r) => {
+          const yrMatch = r.tahunAjaran === tahunAjaran || (!r.tahunAjaran && tahunAjaran === '1446 - 1447 H.');
+          const u = (r.uraian || '').toLowerCase();
+          if (pTypeUpper.includes('IMDA')) return yrMatch && (r.noKode === '2.2' || u.includes('imda'));
+          if (pTypeUpper.includes('IMNI')) return yrMatch && (r.noKode === '2.3' || u.includes('imni'));
+          return yrMatch && (r.noKode === '2.1' || u.includes('syahri') || u.includes('spp'));
+        });
+
+        if (item) {
           const newRealita = item.realita + totalAmountBatch;
           const newPersentase = item.jumlahAnggaran > 0 ? Math.round((newRealita / item.jumlahAnggaran) * 100) : 100;
           await db.update(rapbmItems).set({

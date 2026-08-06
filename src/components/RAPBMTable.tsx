@@ -448,12 +448,10 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
           <table className="w-full text-xs text-left border-collapse min-w-[1000px]">
             <colgroup>
               {/* PENERIMAAN COLUMNS */}
-              <col className="w-12" />
               <col className="w-auto" />
               <col className="w-36" />
 
               {/* PENGELUARAN COLUMNS */}
-              <col className="w-12" />
               <col className="w-auto" />
               <col className="w-36" />
               <col className="w-36" />
@@ -462,7 +460,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
             <thead>
               {/* Super Header */}
               <tr className="bg-emerald-900 text-white font-bold uppercase tracking-wider text-center">
-                <th colSpan={3} className="py-2.5 px-3 border-r border-emerald-800">
+                <th colSpan={2} className="py-2.5 px-3 border-r border-emerald-800">
                   <div className="flex items-center justify-between px-2">
                     <span>PENERIMAAN</span>
                     <button
@@ -475,7 +473,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     </button>
                   </div>
                 </th>
-                <th colSpan={5} className="py-2.5 px-3">
+                <th colSpan={4} className="py-2.5 px-3">
                   <div className="flex items-center justify-between px-2">
                     <span>PENGELUARAN</span>
                     <button
@@ -492,12 +490,10 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
               {/* Sub Header */}
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                 {/* Penerimaan */}
-                <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">No</th>
                 <th className="py-2.5 px-3 border-r">Uraian</th>
                 <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Jumlah (Rp)</th>
 
                 {/* Pengeluaran */}
-                <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">No</th>
                 <th className="py-2.5 px-3 border-r">Uraian</th>
                 <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Anggaran (Rp)</th>
                 <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Realita (Rp)</th>
@@ -513,9 +509,6 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                 return (
                   <tr key={`row-${idx}-${p ? p.id : 'nop'}-${k ? k.id : 'nok'}`} className="hover:bg-slate-50 transition">
                     {/* PENERIMAAN CELLS */}
-                    <td className="py-2.5 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 whitespace-nowrap">
-                      {p ? p.categoryCode : ''}
-                    </td>
                     <td className="py-2 px-2 border-r font-medium leading-relaxed">
                       {p ? (
                         <div className="space-y-1">
@@ -558,19 +551,6 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                                   </button>
                                 )}
                               </div>
-                            </div>
-                          )}
-                          {(p.noKode === '2.1' || p.uraian.toLowerCase().includes('syahri')) ? (
-                            <div className="flex items-center mt-0.5">
-                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 shadow-2xs" title="Realita otomatis disinkronkan dengan total Pembayaran Syahriah santri tahun ini">
-                                ⚡ Sync Syahriah
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center mt-0.5">
-                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-300 shadow-2xs" title="Realita otomatis dicatat dari transaksi Buku Kas Real-time tahun ini">
-                                ⚡ Sync Buku Kas
-                              </span>
                             </div>
                           )}
                         </div>
@@ -623,9 +603,6 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     </td>
 
                     {/* PENGELUARAN CELLS */}
-                    <td className="py-2.5 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 whitespace-nowrap">
-                      {k ? k.categoryCode : ''}
-                    </td>
                     <td className="py-2 px-2 border-r font-medium leading-relaxed">
                       {k ? (
                         <div className="space-y-1">
@@ -668,19 +645,6 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                                   </button>
                                 )}
                               </div>
-                            </div>
-                          )}
-                          {(k.noKode === '1.1' || k.uraian.toLowerCase().includes('bisyaroh guru')) ? (
-                            <div className="flex items-center mt-0.5">
-                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold border border-amber-300 shadow-2xs" title="Realita otomatis disinkronkan dengan total Slip Gaji Guru tahun ini">
-                                ⚡ Sync Slip Gaji
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center mt-0.5">
-                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-300 shadow-2xs" title="Realita otomatis dicatat dari transaksi Buku Kas Real-time tahun ini">
-                                ⚡ Sync Buku Kas
-                              </span>
                             </div>
                           )}
                         </div>
@@ -785,14 +749,12 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
             {/* TOTAL FOOTER ROW */}
             <tfoot>
               <tr className="bg-slate-900 text-white font-extrabold text-xs">
-                <td className="py-3 px-2 text-center border-r border-slate-700">TOTAL</td>
-                <td className="py-3 px-3 border-r border-slate-700 font-bold">JUMLAH PENERIMAAN</td>
+                <td className="py-3 px-3 border-r border-slate-700 font-bold text-center">TOTAL PENERIMAAN</td>
                 <td className="py-3 px-3 text-right border-r border-slate-700 text-emerald-300 text-sm">
                   {formatCurrency(totalInRealita)}
                 </td>
 
-                <td className="py-3 px-2 text-center border-r border-slate-700">TOTAL</td>
-                <td className="py-3 px-3 border-r border-slate-700 font-bold">JUMLAH PENGELUARAN</td>
+                <td className="py-3 px-3 border-r border-slate-700 font-bold text-center">TOTAL PENGELUARAN</td>
                 <td className="py-3 px-3 text-right border-r border-slate-700 text-amber-200 text-sm">
                   {formatCurrency(totalOutAnggaran)}
                 </td>

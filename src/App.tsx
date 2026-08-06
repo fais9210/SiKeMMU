@@ -160,18 +160,26 @@ export default function App() {
     );
     const totalBisyarohTU = activeYearTUPayrolls.reduce((sum, p) => sum + (p.bisyarohBersih || 0), 0);
 
+    const isMatchYear = (year1?: string, year2?: string) => {
+      if (!year1) return year2 === '1446 - 1447 H.';
+      return (
+        year1.replace(/\s+/g, '').replace('.', '').toLowerCase() ===
+        (year2 || '').replace(/\s+/g, '').replace('.', '').toLowerCase()
+      );
+    };
+
     // Total Uang Syahriyah (Penerimaan) dari Pembayaran Syahriah santri tahun aktif
     const activeYearSyahriah = studentPayments.filter(
       (p) =>
-        (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
-        (!p.type || p.type.toUpperCase().includes('SYAHRI'))
+        isMatchYear(p.tahunAjaran, selectedYear) &&
+        (!p.type || p.type.toUpperCase().includes('SYAHRI') || p.type.toUpperCase().includes('SPP'))
     );
     const totalUangSyahriah = activeYearSyahriah.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     // Total Uang IMDA (Penerimaan) dari Pembayaran IMDA santri tahun aktif
     const activeYearIMDA = studentPayments.filter(
       (p) =>
-        (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
+        isMatchYear(p.tahunAjaran, selectedYear) &&
         p.type &&
         p.type.toUpperCase().includes('IMDA')
     );
@@ -180,7 +188,7 @@ export default function App() {
     // Total Uang IMNI (Penerimaan) dari Pembayaran IMNI santri tahun aktif
     const activeYearIMNI = studentPayments.filter(
       (p) =>
-        (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
+        isMatchYear(p.tahunAjaran, selectedYear) &&
         p.type &&
         p.type.toUpperCase().includes('IMNI')
     );
@@ -325,10 +333,10 @@ export default function App() {
             matchedItem = searchPool.find((i) => i.noKode === '4.5');
           }
           if (!matchedItem && descUpper.includes('IMDA')) {
-            matchedItem = searchPool.find((i) => i.noKode === '4.6');
+            matchedItem = searchPool.find((i) => i.noKode === '4.6' || (i.uraian && i.uraian.toUpperCase().includes('IMDA')));
           }
           if (!matchedItem && descUpper.includes('IMNI')) {
-            matchedItem = searchPool.find((i) => i.noKode === '4.7');
+            matchedItem = searchPool.find((i) => i.noKode === '4.7' || (i.uraian && i.uraian.toUpperCase().includes('IMNI')));
           }
           if (!matchedItem && (descUpper.includes('PHBI') || descUpper.includes('MAULID') || descUpper.includes('ISRA'))) {
             matchedItem = searchPool.find((i) => i.noKode === '4.8');
@@ -345,13 +353,13 @@ export default function App() {
             matchedItem = searchPool.find((i) => i.noKode === '1' || i.uraian.toUpperCase().includes('SISA TAHUN LALU'));
           }
           if (!matchedItem && (descUpper.includes('SYAHRIYAH') || descUpper.includes('SYAHRIAH') || descUpper.includes('SPP'))) {
-            matchedItem = searchPool.find((i) => i.noKode === '2.1');
+            matchedItem = searchPool.find((i) => i.noKode === '2.1' || (i.uraian && (i.uraian.toLowerCase().includes('syahri') || i.uraian.toLowerCase().includes('spp'))));
           }
           if (!matchedItem && descUpper.includes('IMDA')) {
-            matchedItem = searchPool.find((i) => i.noKode === '2.2');
+            matchedItem = searchPool.find((i) => i.noKode === '2.2' || (i.uraian && i.uraian.toUpperCase().includes('IMDA')));
           }
           if (!matchedItem && descUpper.includes('IMNI')) {
-            matchedItem = searchPool.find((i) => i.noKode === '2.3');
+            matchedItem = searchPool.find((i) => i.noKode === '2.3' || (i.uraian && i.uraian.toUpperCase().includes('IMNI')));
           }
           if (!matchedItem && (descUpper.includes('BPPDGS') || descUpper.includes('BOS') || descUpper.includes('PROVINSI'))) {
             matchedItem = searchPool.find((i) => i.noKode === '3.1');
@@ -460,16 +468,23 @@ export default function App() {
       let targetRealita = trxSumByRapbmId[item.id] || 0;
 
       // Sync directly from module totals for specific income and expense items
-      if (item.noKode === '2.1' || (item.type === 'PENERIMAAN' && item.uraian.toLowerCase().includes('syahriyah'))) {
-        targetRealita = Math.max(targetRealita, totalUangSyahriah);
-      } else if (item.noKode === '2.2' || (item.type === 'PENERIMAAN' && item.uraian.toUpperCase().includes('IMDA'))) {
-        targetRealita = Math.max(targetRealita, totalUangIMDA);
-      } else if (item.noKode === '2.3' || (item.type === 'PENERIMAAN' && item.uraian.toUpperCase().includes('IMNI'))) {
-        targetRealita = Math.max(targetRealita, totalUangIMNI);
-      } else if (item.noKode === '1.1' || (item.type === 'PENGELUARAN' && item.uraian.toLowerCase().includes('bisyaroh guru'))) {
-        targetRealita = Math.max(targetRealita, totalBisyarohGuru);
-      } else if (item.noKode === '1.2' || (item.type === 'PENGELUARAN' && item.uraian.toLowerCase().includes('bisyaroh tu'))) {
-        targetRealita = Math.max(targetRealita, totalBisyarohTU);
+      if (item.type === 'PENERIMAAN') {
+        const uLower = (item.uraian || '').toLowerCase();
+        const uUpper = (item.uraian || '').toUpperCase();
+        if (item.noKode === '2.1' || uLower.includes('syahri') || uLower.includes('spp')) {
+          targetRealita = Math.max(targetRealita, totalUangSyahriah);
+        } else if (item.noKode === '2.2' || uUpper.includes('IMDA')) {
+          targetRealita = Math.max(targetRealita, totalUangIMDA);
+        } else if (item.noKode === '2.3' || uUpper.includes('IMNI')) {
+          targetRealita = Math.max(targetRealita, totalUangIMNI);
+        }
+      } else if (item.type === 'PENGELUARAN') {
+        const uLower = (item.uraian || '').toLowerCase();
+        if (item.noKode === '1.1' || uLower.includes('bisyaroh guru') || uLower.includes('gaji guru')) {
+          targetRealita = Math.max(targetRealita, totalBisyarohGuru);
+        } else if (item.noKode === '1.2' || uLower.includes('bisyaroh tu') || uLower.includes('gaji tu') || uLower.includes('staf tu')) {
+          targetRealita = Math.max(targetRealita, totalBisyarohTU);
+        }
       }
 
       // For PENERIMAAN items, update targetAnggaran if not explicitly set
