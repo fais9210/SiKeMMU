@@ -82,6 +82,54 @@ export function getCurrentHijriAcademicYear(offsetDays: number = 0): string {
 }
 
 /**
+ * Formats a Hijri date string so that its Hijri year matches the active academic year.
+ * E.g., if input is "19 Safar 1448 H" and academicYear is "1446 - 1447 H.", returns "19 Safar 1446 H".
+ */
+export function formatHijriDateForAcademicYear(
+  hijriDateInput?: string | Date | HijriDateObj,
+  academicYear: string = '1446 - 1447 H.',
+  monthHijri?: string,
+  offsetDays: number = 0
+): string {
+  const matches = academicYear ? academicYear.match(/\d{4}/g) : null;
+  const startYear = matches && matches[0] ? matches[0] : '1446';
+  const endYear = matches && matches[1] ? matches[1] : (parseInt(startYear) + 1).toString();
+
+  const isSecondHalf = monthHijri && ['Syawal', 'Syawwal', "Dz. Qo'dah", "Dzulqa'dah", "Dz. Hijjah", "Dzulhijjah"].includes(monthHijri);
+  const targetHijriYear = isSecondHalf ? endYear : startYear;
+
+  if (!hijriDateInput) {
+    const todayH = getHijriDate(new Date(), offsetDays);
+    const mName = monthHijri || todayH.monthName;
+    return `${todayH.day} ${mName} ${targetHijriYear} H`;
+  }
+
+  if (typeof hijriDateInput === 'object' && 'formatted' in hijriDateInput) {
+    const mName = monthHijri || hijriDateInput.monthName;
+    return `${hijriDateInput.day} ${mName} ${targetHijriYear} H`;
+  }
+
+  if (hijriDateInput instanceof Date) {
+    const hDate = getHijriDate(hijriDateInput, offsetDays);
+    const mName = monthHijri || hDate.monthName;
+    return `${hDate.day} ${mName} ${targetHijriYear} H`;
+  }
+
+  let str = String(hijriDateInput).trim();
+  if (!str) {
+    const todayH = getHijriDate(new Date(), offsetDays);
+    return `${todayH.day} ${monthHijri || todayH.monthName} ${targetHijriYear} H`;
+  }
+
+  // Replace any 4-digit year at the end of the string with targetHijriYear + " H"
+  if (/\d{4}/.test(str)) {
+    return str.replace(/\d{4}\s*H?\.?/g, `${targetHijriYear} H`);
+  }
+
+  return `${str} ${targetHijriYear} H`;
+}
+
+/**
  * Converts a numeric amount into Indonesian words ("terbilang").
  * E.g., 1500000 -> "Satu Juta Lima Ratus Ribu Rupiah"
  */

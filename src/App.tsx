@@ -34,7 +34,7 @@ import {
   alignRapbmDataToSkeleton,
 } from './data/initialData';
 
-import { getHijriDate, getCurrentHijriAcademicYear } from './utils/hijri';
+import { getHijriDate, getCurrentHijriAcademicYear, formatHijriDateForAcademicYear } from './utils/hijri';
 import {
   generateCashFlowPDF,
   generateRAPBMPDF,
@@ -703,10 +703,17 @@ export default function App() {
 
   const handleAddPayroll = async (payrollData: Omit<PayrollRecord, 'id'>) => {
     const targetYear = payrollData.tahunAjaran || selectedYear;
+    const formattedHijriDate = formatHijriDateForAcademicYear(
+      payrollData.dateGeneratedHijri,
+      targetYear,
+      payrollData.monthHijri,
+      madrasahInfo.hijriOffsetDays
+    );
     const newPay: PayrollRecord = {
       id: `pay-${Date.now()}`,
       ...payrollData,
       tahunAjaran: targetYear,
+      dateGeneratedHijri: formattedHijriDate,
     };
     setPayrolls((prev) => [newPay, ...prev]);
 

@@ -14,7 +14,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { MadrasahInfo, PayrollRecord, Teacher } from '../types';
-import { formatCurrency, getHijriDate } from '../utils/hijri';
+import { formatCurrency, getHijriDate, formatHijriDateForAcademicYear } from '../utils/hijri';
 
 interface PayrollManagerProps {
   madrasah: MadrasahInfo;
@@ -103,16 +103,30 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
       const totalPotongan = potonganInfaq + potonganTabungan + potonganLain;
       const bisyarohBersih = Math.max(0, totalGajiKotor - totalPotongan);
 
+      const targetMonth = selectedMonthHijri === 'ALL' ? 'Syawal' : selectedMonthHijri;
+      const targetYear = formTahunAjaran || (selectedFilterYear !== 'ALL' ? selectedFilterYear : selectedYear);
+      const dateGeneratedHijri = formatHijriDateForAcademicYear(
+        currentHijri.formatted,
+        targetYear,
+        targetMonth,
+        madrasah.hijriOffsetDays
+      );
+      const extractedHYear = (dateGeneratedHijri.match(/\d{4}/) || [])[0];
+      const gregYear = extractedHYear ? parseInt(extractedHYear) + 578 : new Date().getFullYear();
+      const now = new Date();
+      const monthGregorian = `${now.toLocaleDateString('id-ID', { month: 'long' })} ${gregYear}`;
+      const dateGeneratedGregorian = `${gregYear}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
       await onAddPayroll({
-        tahunAjaran: formTahunAjaran,
+        tahunAjaran: targetYear,
         teacherId: teacher.id,
         teacherName: teacher.name,
         nipNu: teacher.nipNu,
         role: teacher.role,
-        monthHijri: selectedMonthHijri === 'ALL' ? 'Syawal' : selectedMonthHijri,
-        monthGregorian: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
-        dateGeneratedHijri: currentHijri.formatted,
-        dateGeneratedGregorian: new Date().toISOString().split('T')[0],
+        monthHijri: targetMonth,
+        monthGregorian,
+        dateGeneratedHijri,
+        dateGeneratedGregorian,
         jamMengajar,
         bisyarohPokok,
         tunjanganGuru,
@@ -157,6 +171,18 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
           const totalPotongan = t.potonganInfaq + t.potonganTabungan;
           const bisyarohBersih = Math.max(0, totalGajiKotor - totalPotongan);
 
+          const dateGeneratedHijri = formatHijriDateForAcademicYear(
+            currentHijri.formatted,
+            targetYear,
+            targetMonth,
+            madrasah.hijriOffsetDays
+          );
+          const extractedHYear = (dateGeneratedHijri.match(/\d{4}/) || [])[0];
+          const gregYear = extractedHYear ? parseInt(extractedHYear) + 578 : new Date().getFullYear();
+          const now = new Date();
+          const monthGregorian = `${now.toLocaleDateString('id-ID', { month: 'long' })} ${gregYear}`;
+          const dateGeneratedGregorian = `${gregYear}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
           await onAddPayroll({
             tahunAjaran: targetYear,
             teacherId: t.id,
@@ -164,9 +190,9 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
             nipNu: t.nipNu,
             role: t.role,
             monthHijri: targetMonth,
-            monthGregorian: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
-            dateGeneratedHijri: currentHijri.formatted,
-            dateGeneratedGregorian: new Date().toISOString().split('T')[0],
+            monthGregorian,
+            dateGeneratedHijri,
+            dateGeneratedGregorian,
             jamMengajar: t.jamMengajar,
             bisyarohPokok,
             tunjanganGuru: tunjanganGuruTotal,
@@ -413,7 +439,7 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
                     <span>&bull;</span>
                     <span className="text-rose-600">Potongan: <strong>-{formatCurrency(pay.totalPotongan)}</strong></span>
                     <span>&bull;</span>
-                    <span>Tanggal: {pay.dateGeneratedHijri}</span>
+                    <span>Tanggal: {formatHijriDateForAcademicYear(pay.dateGeneratedHijri, pay.tahunAjaran || selectedYear, pay.monthHijri, madrasah.hijriOffsetDays)}</span>
                   </div>
                 </div>
 

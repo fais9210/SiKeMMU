@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { MadrasahInfo, PayrollRecord, RAPBMItem, Transaction } from '../types';
-import { formatCurrency, formatNumber, terbilang } from './hijri';
+import { formatCurrency, formatNumber, terbilang, formatHijriDateForAcademicYear } from './hijri';
 
 export function generateRAPBMPDF(
   madrasah: MadrasahInfo,
@@ -169,6 +169,13 @@ export function generateSlipGajiPDF(
   madrasah: MadrasahInfo,
   payroll: PayrollRecord
 ) {
+  const displayHijriDate = formatHijriDateForAcademicYear(
+    payroll.dateGeneratedHijri,
+    payroll.tahunAjaran || madrasah.tahunAjaranHijri,
+    payroll.monthHijri,
+    madrasah.hijriOffsetDays
+  );
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -202,7 +209,7 @@ export function generateSlipGajiPDF(
   doc.text(`Jam Mengajar     : ${payroll.jamMengajar} Jam / Minggu`, 12, 48);
 
   doc.text(`No. Kwitansi      : PAY-${payroll.id}`, 95, 36);
-  doc.text(`Tanggal Cetak   : ${payroll.dateGeneratedHijri}`, 95, 40);
+  doc.text(`Tanggal Cetak   : ${displayHijriDate}`, 95, 40);
 
   // Details Table
   const tableData: any[] = [
@@ -247,7 +254,7 @@ export function generateSlipGajiPDF(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
 
-  doc.text(`Karangmenggah, ${payroll.dateGeneratedHijri}`, 95, sigY);
+  doc.text(`Karangmenggah, ${displayHijriDate}`, 95, sigY);
   doc.text('Penerima,', 15, sigY + 4);
   doc.text('Bendahara Madrasah,', 95, sigY + 4);
 

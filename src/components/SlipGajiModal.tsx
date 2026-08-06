@@ -1,7 +1,7 @@
 import React from 'react';
 import { Download, Printer, Building2, CheckCircle2, ArrowLeft, Home, Trash2, X } from 'lucide-react';
 import { MadrasahInfo, PayrollRecord } from '../types';
-import { formatCurrency } from '../utils/hijri';
+import { formatCurrency, formatHijriDateForAcademicYear } from '../utils/hijri';
 
 interface SlipGajiModalProps {
   madrasah: MadrasahInfo;
@@ -21,6 +21,13 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
   onGoHome,
 }) => {
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
+
+  const displayHijriDate = formatHijriDateForAcademicYear(
+    payroll.dateGeneratedHijri,
+    payroll.tahunAjaran || madrasah.tahunAjaranHijri,
+    payroll.monthHijri,
+    madrasah.hijriOffsetDays
+  );
 
   const handlePrint = () => {
     window.print();
@@ -123,7 +130,7 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
             <div className="space-y-1 text-right">
               <p><span className="text-slate-400">Jam Mengajar :</span> <strong>{payroll.jamMengajar} Jam / Minggu</strong></p>
               <p><span className="text-slate-400">No. Kwitansi  :</span> <span className="font-mono text-slate-600">PAY-{payroll.id}</span></p>
-              <p><span className="text-slate-400">Tanggal        :</span> <span>{payroll.dateGeneratedHijri}</span></p>
+              <p><span className="text-slate-400">Tanggal        :</span> <span>{displayHijriDate}</span></p>
             </div>
           </div>
 
@@ -202,7 +209,7 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({
 
             <div className="space-y-12">
               <div>
-                <span className="text-slate-400 block font-medium">Karangmenggah, {payroll.dateGeneratedHijri}</span>
+                <span className="text-slate-400 block font-medium">Karangmenggah, {displayHijriDate}</span>
                 <span className="font-bold text-slate-800">Bendahara Madrasah</span>
               </div>
               <div>
