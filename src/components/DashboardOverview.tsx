@@ -57,59 +57,62 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 }) => {
   const currentHijri = getHijriDate(new Date(), madrasah.hijriOffsetDays);
 
-  // Compute totals
+  // Compute totals matching RAPBM table logic exactly
   let totalTargetPenerimaan = 0;
+  let totalRealitaPenerimaan = 0;
   let totalTargetPengeluaran = 0;
   let totalRealitaPengeluaran = 0;
 
   rapbmData.forEach((item) => {
     if (item.type === 'PENERIMAAN') {
-      totalTargetPenerimaan += (item.jumlahAnggaran || item.realita || 0);
+      totalTargetPenerimaan += (item.jumlahAnggaran || 0);
+      totalRealitaPenerimaan += (item.realita > 0 ? item.realita : (item.jumlahAnggaran || 0));
     } else {
       totalTargetPengeluaran += (item.jumlahAnggaran || 0);
       totalRealitaPengeluaran += (item.realita || 0);
     }
   });
 
-  // Calculate Cashbook transactions total for non-RAPBM items
-  let totalTrxIn = 0;
-  let totalTrxOut = 0;
-  transactions.forEach((t) => {
-    if (!t.rapbmCode) {
-      if (t.type === 'IN') totalTrxIn += t.amount;
-      if (t.type === 'OUT') totalTrxOut += t.amount;
-    }
-  });
-
-  const totalPenerimaan = totalTargetPenerimaan + totalTrxIn;
-  const totalRealisasiPengeluaran = totalRealitaPengeluaran + totalTrxOut;
-  const sisaKas = totalPenerimaan - totalRealisasiPengeluaran;
+  const sisaKasRAPBM = totalRealitaPenerimaan - totalRealitaPengeluaran;
   const serapanPercentage = Math.round((totalRealitaPengeluaran / (totalTargetPengeluaran || 1)) * 100);
 
   // Recharts Data Prep: Categories comparison
   const categoriesMap: { [key: string]: { name: string; target: number; realita: number } } = {};
 
   rapbmData.forEach((item) => {
-    if (!categoriesMap[item.categoryName]) {
-      categoriesMap[item.categoryName] = {
-        name: item.categoryName.length > 18 ? item.categoryName.substring(0, 18) + '...' : item.categoryName,
+    const catName = item.categoryName || (item.type === 'PENERIMAAN' ? 'PENDAPATAN' : 'PENGELUARAN');
+    if (!categoriesMap[catName]) {
+      categoriesMap[catName] = {
+        name: catName.length > 18 ? catName.substring(0, 18) + '...' : catName,
         target: 0,
         realita: 0,
       };
     }
-    categoriesMap[item.categoryName].target += item.jumlahAnggaran;
-    categoriesMap[item.categoryName].realita += item.realita;
+    categoriesMap[catName].target += (item.jumlahAnggaran || 0);
+    categoriesMap[catName].realita += (item.realita || 0);
   });
 
   const chartData = Object.values(categoriesMap);
 
-  const pieData = [
-    { name: 'Bisyaroh & Tunjangan', value: 10589000, color: '#059669' },
-    { name: 'Biaya Pemeliharaan', value: 17950000, color: '#0284c7' },
-    { name: 'Belanja ATK', value: 1790000, color: '#d97706' },
-    { name: 'Pengembangan Pendidik', value: 9140000, color: '#7c3aed' },
-    { name: 'Haflah & Lain-lain', value: 7626500, color: '#e11d48' },
-  ];
+  // Dynamic Pie Chart Data from RAPBM Pengeluaran
+  const CHART_COLORS = ['#059669', '#0284c7', '#d97706', '#7c3aed', '#e11d48', '#0891b2', '#4f46e5', '#ca8a04'];
+  const pengeluaranCatMap: { [key: string]: number } = {};
+
+  rapbmData
+    .filter((item) => item.type === 'PENGELUARAN')
+    .forEach((item) => {
+      const name = item.categoryName || 'PENGELUARAN LAIN';
+      const val = item.realita > 0 ? item.realita : (item.jumlahAnggaran || 0);
+      pengeluaranCatMap[name] = (pengeluaranCatMap[name] || 0) + val;
+    });
+
+  const pieData = Object.keys(pengeluaranCatMap).length > 0
+    ? Object.entries(pengeluaranCatMap).map(([name, value], idx) => ({
+        name: name.length > 20 ? name.substring(0, 20) + '...' : name,
+        value,
+        color: CHART_COLORS[idx % CHART_COLORS.length],
+      }))
+    : [{ name: 'Belum Ada Data', value: 0, color: '#cbd5e1' }];
 
   return (
     <div id="dashboard-overview-container" className="space-y-6">
@@ -184,19 +187,29 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       {/* Summary Stat Cards (Geometric Balance 4-Card Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         
-        {/* Card 1: Total Target Anggaran RAPBM */}
+        {/* Card 1: Total Penerimaan RAPBM */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target RAPBM ({selectedYear})</span>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{formatCurrency(totalTargetPenerimaan)}</p>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Penerimaan RAPBM</span>
+          <p className="text-2xl font-bold text-emerald-700 mt-1">{formatCurrency(totalRealitaPenerimaan)}</p>
           <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between font-medium">
-            <span>Penerimaan = Pengeluaran</span>
-            <span className="text-emerald-600 font-bold uppercase tracking-wider">Balanced</span>
+            <span>Target Penerimaan</span>
+            <span className="font-bold text-slate-700">{formatCurrency(totalTargetPenerimaan)}</span>
           </div>
         </div>
 
-        {/* Card 2: Realisasi Pengeluaran */}
+        {/* Card 2: Target Pengeluaran RAPBM */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Realisasi Pengeluaran</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target Pengeluaran RAPBM</span>
+          <p className="text-2xl font-bold text-slate-800 mt-1">{formatCurrency(totalTargetPengeluaran)}</p>
+          <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between font-medium">
+            <span>Alokasi Anggaran RAPBM</span>
+            <span className="text-emerald-600 font-bold uppercase tracking-wider">TA {selectedYear}</span>
+          </div>
+        </div>
+
+        {/* Card 3: Realita Pengeluaran RAPBM */}
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Realisasi Pengeluaran RAPBM</span>
           <p className="text-2xl font-bold text-rose-600 mt-1">{formatCurrency(totalRealitaPengeluaran)}</p>
           <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between font-medium">
             <span>Serapan Anggaran</span>
@@ -204,32 +217,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
         </div>
 
-        {/* Card 3: Saldo Kas Real-time */}
+        {/* Card 4: Sisa Saldo RAPBM */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Saldo Kas Real-time</span>
-          <p className={`text-2xl font-bold mt-1 ${sisaKas >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
-            {formatCurrency(sisaKas)}
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sisa Saldo RAPBM</span>
+          <p className={`text-2xl font-bold mt-1 ${sisaKasRAPBM >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+            {formatCurrency(sisaKasRAPBM)}
           </p>
           <div className="mt-2 text-[10px] text-slate-500 font-medium flex items-center justify-between">
-            <span className="text-emerald-600 font-bold">In: {formatCurrency(totalPenerimaan)}</span>
-            <span className="text-rose-600 font-bold">Out: {formatCurrency(totalRealisasiPengeluaran)}</span>
-          </div>
-        </div>
-
-        {/* Card 4: Status Item RAPBM & Kas */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Transaksi Kas</span>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{transactions.length} Transaksi</p>
-          <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between font-medium">
-            <span className="text-emerald-600 font-bold flex items-center">
-              <CheckCircle2 className="w-3 h-3 mr-1" /> Realtime Sync
-            </span>
-            <button
-              onClick={() => onNavigateTab('cashbook')}
-              className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:underline"
-            >
-              Lihat Kas &rarr;
-            </button>
+            <span className="text-emerald-600 font-bold">In: {formatCurrency(totalRealitaPenerimaan)}</span>
+            <span className="text-rose-600 font-bold">Out: {formatCurrency(totalRealitaPengeluaran)}</span>
           </div>
         </div>
 

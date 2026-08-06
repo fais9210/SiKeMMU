@@ -619,23 +619,15 @@ export default function App() {
     handleSelectYear(newYear);
   };
 
-  // Total Calculations (Saldo Kas Real-time = Penerimaan RAPBM - Pengeluaran RAPBM)
+  // Total Calculations (matching RAPBM table totals exactly)
   let totalIncome = 0;
   let totalExpense = 0;
 
   currentYearRapbm.forEach((item) => {
     if (item.type === 'PENERIMAAN') {
-      totalIncome += item.realita;
+      totalIncome += (item.realita > 0 ? item.realita : (item.jumlahAnggaran || 0));
     } else if (item.type === 'PENGELUARAN') {
-      totalExpense += item.realita;
-    }
-  });
-
-  // Tambahkan transaksi Kas yang tidak terhubung ke kode RAPBM tertentu
-  transactions.forEach((t) => {
-    if (!t.rapbmCode) {
-      if (t.type === 'IN') totalIncome += t.amount;
-      if (t.type === 'OUT') totalExpense += t.amount;
+      totalExpense += (item.realita || 0);
     }
   });
 
