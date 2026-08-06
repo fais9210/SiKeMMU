@@ -1,7 +1,7 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import * as schema from './schema.ts';
-import * as dotenv from 'dotenv';
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool, type PoolConfig } from "pg";
+import * as schema from "./schema.ts";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
@@ -11,24 +11,43 @@ declare global {
 
 export const createPool = () => {
   if (!global._postgresPool) {
-    global._postgresPool = new Pool({
-      host: process.env.SQL_HOST,
-      port: process.env.SQL_PORT ? Number(process.env.SQL_PORT) : 5432,
-      user: process.env.SQL_USER,
-      password: process.env.SQL_PASSWORD,
-      database: process.env.SQL_DB_NAME,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 15000,
-      keepAlive: true,
-    });
+    const poolConfig: PoolConfig = process.env.DATABASE_URL
+      ? {
+          connectionString: process.env.DATABASE_URL,
+          ssl: { rejectUnauthorized: false },
+          max: 10,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 15000,
+          keepAlive: true,
+        }
+      : {
+          host: process.env.SQL_HOST,
+          port: process.env.SQL_PORT ? Number(process.env.SQL_PORT) : 5432,
+          user: process.env.SQL_USER,
+          password: process.env.SQL_PASSWORD,
+          database: process.env.SQL_DB_NAME,
+          max: 10,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 15000,
+          keepAlive: true,
+        };
 
-    global._postgresPool.on('error', (err) => {
+    global._postgresPool = new Pool(poolConfig);
+
+    global._postgresPool.on("error", (err) => {
       // Gracefully handle idle connection drops/resets from PostgreSQL proxy or cloud host
-      if (err.message && err.message.includes('Connection terminated unexpectedly')) {
-        console.warn('Idle PostgreSQL connection closed by server, client recycled automatically.');
+      if (
+        err.message &&
+        err.message.includes("Connection terminated unexpectedly")
+      ) {
+        console.warn(
+          "Idle PostgreSQL connection closed by server, client recycled automatically.",
+        );
       } else {
-        console.warn('PostgreSQL pool background notification:', err.message || err);
+        console.warn(
+          "PostgreSQL pool background notification:",
+          err.message || err,
+        );
       }
     });
   }
@@ -166,9 +185,8 @@ export async function initTables() {
       );
 
     `);
-    console.log('PostgreSQL tables initialized successfully.');
+    console.log("PostgreSQL tables initialized successfully.");
   } catch (err) {
-    console.error('Error auto-creating PostgreSQL tables:', err);
+    console.error("Error auto-creating PostgreSQL tables:", err);
   }
 }
-
