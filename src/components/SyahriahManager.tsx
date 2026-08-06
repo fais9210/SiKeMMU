@@ -804,6 +804,34 @@ export const SyahriahManager: React.FC<SyahriahManagerProps> = ({
         </div>
       </div>
 
+      {/* Konversi Tanggal ke Hijriyah Widget */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-2">
+        <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+          <Calendar className="w-4 h-4 text-emerald-700" />
+          <span>Konversi Tanggal Pembayaran ke Hijriyah</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-6 pt-1">
+          <div className="flex flex-col space-y-1">
+            <label className="text-[11px] font-bold text-slate-700">Tanggal Masehi</label>
+            <div className="relative">
+              <input
+                type="date"
+                value={batchDate}
+                onChange={(e) => setBatchDate(e.target.value)}
+                className="px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs cursor-pointer min-w-[180px]"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col space-y-1">
+            <label className="text-[11px] font-bold text-slate-700">Konversi Hijriyah</label>
+            <div className="px-5 py-2 bg-[#FFFDF0] border border-amber-300/90 rounded-xl font-bold text-[#7A2E00] text-xs flex items-center shadow-2xs min-w-[190px] justify-center tracking-wide">
+              {getHijriDate(batchDate, madrasah.hijriOffsetDays).formatted}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Control Bar & Filter Bar */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1153,16 +1181,19 @@ export const SyahriahManager: React.FC<SyahriahManagerProps> = ({
                   </div>
                 )}
 
-                <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white text-xs">
-                  <span className="bg-slate-100 px-2 py-1.5 text-slate-600 font-semibold border-r border-slate-300">
-                    Tanggal Bayar
-                  </span>
-                  <input
-                    type="date"
-                    value={batchDate}
-                    onChange={(e) => setBatchDate(e.target.value)}
-                    className="px-2 py-1 text-slate-800 font-medium focus:outline-none"
-                  />
+                <div className="flex items-center space-x-2 bg-white p-1 rounded-xl border border-slate-300">
+                  <div className="flex items-center space-x-1.5 px-2 py-0.5">
+                    <span className="text-[11px] font-bold text-slate-600">Masehi:</span>
+                    <input
+                      type="date"
+                      value={batchDate}
+                      onChange={(e) => setBatchDate(e.target.value)}
+                      className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                    />
+                  </div>
+                  <div className="px-2.5 py-1 bg-[#FFFDF0] border-l border-amber-300 rounded-r-lg font-bold text-[#7A2E00] text-xs shadow-2xs">
+                    {getHijriDate(batchDate, madrasah.hijriOffsetDays).formatted}
+                  </div>
                 </div>
 
                 <div className="relative min-w-[140px]">

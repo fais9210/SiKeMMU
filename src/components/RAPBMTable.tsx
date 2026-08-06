@@ -515,7 +515,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                 const k = pengeluaranList[idx];
 
                 return (
-                  <tr key={p?.id || k?.id || idx} className="hover:bg-slate-50 transition">
+                  <tr key={`row-${idx}-${p ? p.id : 'nop'}-${k ? k.id : 'nok'}`} className="hover:bg-slate-50 transition">
                     {/* PENERIMAAN CELLS */}
                     <td className="py-2.5 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 whitespace-nowrap">
                       {p ? p.categoryCode : ''}

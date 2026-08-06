@@ -137,7 +137,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 Ringkasan Dashboard Keuangan Madrasah
               </h2>
               <p className="text-xs text-emerald-200/90 max-w-2xl leading-relaxed">
-                Manajemen transparansi anggaran, pencatatan transaksi real-time, penerbitan slip bisyaroh guru, dan laporan PDF otomatis untuk <strong className="text-white font-semibold">{madrasah.namaMadrasah}</strong>.
+                Manajemen transparansi anggaran, pencatatan transaksi real-time, dan laporan PDF otomatis untuk <strong className="text-white font-semibold">{madrasah.namaMadrasah}</strong>.
               </p>
             </div>
           </div>
@@ -216,19 +216,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
         </div>
 
-        {/* Card 4: Bisyaroh Guru Month Status */}
+        {/* Card 4: Status Item RAPBM & Kas */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Slip Bisyaroh Guru</span>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{payrolls.length} Ustadz/ah</p>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Transaksi Kas</span>
+          <p className="text-2xl font-bold text-slate-800 mt-1">{transactions.length} Transaksi</p>
           <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between font-medium">
             <span className="text-emerald-600 font-bold flex items-center">
-              <CheckCircle2 className="w-3 h-3 mr-1" /> Termasuk Staf TU
+              <CheckCircle2 className="w-3 h-3 mr-1" /> Realtime Sync
             </span>
             <button
-              onClick={() => onNavigateTab('payroll')}
+              onClick={() => onNavigateTab('cashbook')}
               className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:underline"
             >
-              Cetak &rarr;
+              Lihat Kas &rarr;
             </button>
           </div>
         </div>
@@ -319,96 +319,44 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
       </div>
 
-      {/* Two Column Section: Recent Real-time Transactions & Recent Bisyaroh Slips */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Recent Real-time Cashbook Transactions */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wide">Log Transaksi Real-time</h3>
-            </div>
-            <button
-              onClick={() => onNavigateTab('cashbook')}
-              className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider hover:underline"
-            >
-              Lihat Semua Kas &rarr;
-            </button>
+      {/* Recent Real-time Cashbook Transactions (Full Width Card) */}
+      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide">Log Transaksi Real-time Buku Kas Utama</h3>
           </div>
-
-          <div className="space-y-2">
-            {transactions.slice(0, 5).map((trx) => (
-              <div key={trx.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-[10px] uppercase ${trx.type === 'IN' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                    {trx.type === 'IN' ? 'MASUK' : 'KELUAR'}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 leading-tight">{trx.description}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">
-                      {trx.dateHijri} &bull; <span className="font-mono">{trx.receiptNumber}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right font-mono text-xs font-bold">
-                  <span className={trx.type === 'IN' ? 'text-emerald-600' : 'text-rose-500'}>
-                    {trx.type === 'IN' ? '+' : '-'}{formatCurrency(trx.amount)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <button
+            onClick={() => onNavigateTab('cashbook')}
+            className="text-xs text-emerald-700 font-bold uppercase tracking-wider hover:underline flex items-center space-x-1"
+          >
+            <span>Buka Buku Kas &rarr;</span>
+          </button>
         </div>
 
-        {/* Quick Bisyaroh Guru Slips List */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center space-x-2">
-              <Receipt className="w-4 h-4 text-emerald-800" />
-              <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wide">Slip Bisyaroh Guru & Staf</h3>
-            </div>
-            <button
-              onClick={() => onNavigateTab('payroll')}
-              className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider hover:underline"
-            >
-              Kelola Payroll &rarr;
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {payrolls.slice(0, 5).map((pay) => (
-              <div key={pay.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {transactions.slice(0, 6).map((trx) => (
+            <div key={trx.id} className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/60 flex items-center justify-between transition">
+              <div className="flex items-center space-x-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-2xs ${trx.type === 'IN' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
+                  {trx.type === 'IN' ? 'MASUK' : 'KELUAR'}
+                </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-800 leading-tight">{pay.teacherName}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">
-                    {pay.role} &bull; <span className="text-emerald-800 font-medium">{pay.monthHijri}</span>
+                  <p className="text-xs font-bold text-slate-800 leading-tight">{trx.description}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                    {trx.dateHijri} &bull; <span className="font-mono text-slate-600">{trx.receiptNumber}</span>
                   </p>
                 </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className="text-right">
-                    <span className="font-mono text-xs font-bold text-slate-900 block">{formatCurrency(pay.bisyarohBersih)}</span>
-                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold uppercase">
-                      {pay.status}
-                    </span>
-                  </div>
-
-                  <button
-                    id={`btn-print-dash-slip-${pay.id}`}
-                    onClick={() => onGeneratePayrollPDF(pay)}
-                    title="Cetak PDF Slip Bisyaroh"
-                    className="p-1.5 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 rounded border border-slate-200 transition"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                  </button>
-                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
+              <div className="text-right font-mono text-xs font-black">
+                <span className={trx.type === 'IN' ? 'text-emerald-600' : 'text-rose-600'}>
+                  {trx.type === 'IN' ? '+' : '-'}{formatCurrency(trx.amount)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Automatic Reporting Banner (Geometric Balance Bottom Bar) */}

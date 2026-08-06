@@ -66,12 +66,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, unpai
       icon: Printer,
     },
     {
-      id: 'reports' as ActiveTab,
-      label: 'Modul Pelaporan PDF',
-      description: 'Cetak Laporan Otomatis',
-      icon: FileText,
-    },
-    {
       id: 'teachers' as ActiveTab,
       label: 'Master Ustadz & Staf',
       description: 'Data Pengajar & TU',

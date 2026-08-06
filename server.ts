@@ -106,18 +106,33 @@ async function startServer() {
     try {
       const { items } = req.body;
       if (Array.isArray(items) && items.length > 0) {
-        // Upsert logic
         for (const i of items) {
-          const existing = await db.select().from(rapbmItems).where(eq(rapbmItems.id, i.id));
+          if (!i || !i.id) continue;
+          const cleanItem = {
+            id: String(i.id),
+            tahunAjaran: String(i.tahunAjaran || '1446 - 1447 H.'),
+            type: String(i.type || 'PENERIMAAN'),
+            categoryCode: String(i.categoryCode || ''),
+            categoryName: String(i.categoryName || ''),
+            noUrut: String(i.noUrut || ''),
+            noKode: String(i.noKode || ''),
+            uraian: String(i.uraian || ''),
+            jumlahAnggaran: Math.round(Number(i.jumlahAnggaran) || 0),
+            realita: Math.round(Number(i.realita) || 0),
+            persentase: Math.round(Number(i.persentase) || 0),
+          };
+
+          const existing = await db.select().from(rapbmItems).where(eq(rapbmItems.id, cleanItem.id));
           if (existing.length > 0) {
-            await db.update(rapbmItems).set(i).where(eq(rapbmItems.id, i.id));
+            await db.update(rapbmItems).set(cleanItem).where(eq(rapbmItems.id, cleanItem.id));
           } else {
-            await db.insert(rapbmItems).values(i);
+            await db.insert(rapbmItems).values(cleanItem);
           }
         }
       }
       res.json({ success: true });
     } catch (error) {
+      console.error('Error seeding rapbm:', error);
       res.status(500).json({ error: 'Failed to seed rapbm' });
     }
   });

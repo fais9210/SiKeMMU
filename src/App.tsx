@@ -31,6 +31,7 @@ import {
   initialTransactions,
   initialStudents,
   getDefaultRAPBMForYear,
+  alignRapbmDataToSkeleton,
 } from './data/initialData';
 
 import { getHijriDate, getCurrentHijriAcademicYear } from './utils/hijri';
@@ -114,7 +115,11 @@ export default function App() {
       const studentPayData = await parseJsonSafe(resStudentPay);
 
       if (settingsData) setMadrasahInfo(settingsData);
-      if (rapbmDataRes) setRapbmData(rapbmDataRes);
+      if (rapbmDataRes && Array.isArray(rapbmDataRes)) {
+        setRapbmData(alignRapbmDataToSkeleton(rapbmDataRes, ['1446 - 1447 H.', '1447 - 1448 H.']));
+      } else {
+        setRapbmData(alignRapbmDataToSkeleton(initialRAPBMData, ['1446 - 1447 H.', '1447 - 1448 H.']));
+      }
       if (trxData) setTransactions(trxData);
       if (teachersData) setTeachers(teachersData);
       if (payrollData) setPayrolls(payrollData);
@@ -241,12 +246,17 @@ export default function App() {
       if (!isThisYear) return item;
 
       // Sync purely from Real-time Cash Book transactions
-      const targetRealita = trxSumByRapbmId[item.id] || 0;
+      let targetRealita = trxSumByRapbmId[item.id] || 0;
+
+      // Sisa dana dari periode atau tahun ajaran sebelumnya tidak ditampilkan di tahun berikutnya
+      if (item.uraian && item.uraian.toUpperCase().includes('SISA TAHUN LALU')) {
+        targetRealita = 0;
+      }
 
       // For PENERIMAAN items, ensure jumlahAnggaran matches targetRealita so total PENERIMAAN is 100% synced with Kas Realtime
       let targetAnggaran = item.jumlahAnggaran;
       if (item.type === 'PENERIMAAN') {
-        targetAnggaran = targetRealita;
+        targetAnggaran = item.uraian && item.uraian.toUpperCase().includes('SISA TAHUN LALU') ? 0 : targetRealita;
       }
 
       if (item.realita !== targetRealita || item.jumlahAnggaran !== targetAnggaran) {
@@ -355,19 +365,17 @@ export default function App() {
   // Year Selection & Addition Handlers
   const handleSelectYear = (year: string) => {
     setSelectedYear(year);
-    // Check if RAPBM data for this year already exists
-    const hasData = rapbmData.some((i) => i.tahunAjaran === year);
-    if (!hasData) {
-      const defaultItems = getDefaultRAPBMForYear(year);
-      setRapbmData((prev) => [...prev, ...defaultItems]);
-
-      // Seed to backend
+    setRapbmData((prev) => {
+      const updated = alignRapbmDataToSkeleton(prev, [...availableYears, year]);
+      // Seed missing items to backend if necessary
+      const yearItems = updated.filter((i) => i.tahunAjaran === year);
       apiFetch('/api/rapbm/seed-year', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: defaultItems }),
+        body: JSON.stringify({ items: yearItems }),
       }).catch(console.error);
-    }
+      return updated;
+    });
   };
 
   const handleAddNewYear = (newYear: string) => {

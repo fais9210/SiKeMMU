@@ -21,24 +21,25 @@ export const baseRAPBMSkeleton = [
   // PENERIMAAN
   { type: 'PENERIMAAN', categoryCode: 'I', categoryName: 'SISA TAHUN LALU', noUrut: 'I', noKode: '1', uraian: 'SISA TAHUN LALU', jumlahAnggaran: 0 },
   { type: 'PENERIMAAN', categoryCode: 'II', categoryName: 'PENDAPATAN RUTIN', noUrut: 'II', noKode: '2.1', uraian: 'Uang Syahriyah', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'II', categoryName: 'PENDAPATAN RUTIN', noUrut: 'II', noKode: '2.2', uraian: 'IMDA', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'II', categoryName: 'PENDAPATAN RUTIN', noUrut: 'II', noKode: '2.3', uraian: 'IMNI', jumlahAnggaran: 0 },
   { type: 'PENERIMAAN', categoryCode: 'III', categoryName: 'BANTUAN PEMERINTAH', noUrut: 'III', noKode: '3.1', uraian: 'BPPDGS Prov & Kab', jumlahAnggaran: 0 },
   { type: 'PENERIMAAN', categoryCode: 'IV', categoryName: 'BANTUAN LAIN', noUrut: 'IV', noKode: '4.1', uraian: 'Dansos', jumlahAnggaran: 0 },
   { type: 'PENERIMAAN', categoryCode: 'IV', categoryName: 'BANTUAN LAIN', noUrut: 'IV', noKode: '4.2', uraian: 'Sawah yang disewakan', jumlahAnggaran: 0 },
-  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.1', uraian: 'Ziaroh', jumlahAnggaran: 0 },
-  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.2', uraian: 'Hasil tabungan', jumlahAnggaran: 0 },
-  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.3', uraian: 'Hasil Kitab', jumlahAnggaran: 0 },
-  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.4', uraian: 'Hasil seragam murid', jumlahAnggaran: 0 },
-  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.5', uraian: 'Pendaftaran murid baru', jumlahAnggaran: 0 },
-  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.6', uraian: 'Hasil parkir volly ikhtibar', jumlahAnggaran: 0 },
-  { type: 'PENERIMAAN', categoryCode: 'VI', categoryName: 'PENDAPATAN IKHTIBAR', noUrut: 'VI', noKode: '6.1', uraian: 'Iuran wali murid', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.1', uraian: 'Hasil tabungan', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.2', uraian: 'Hasil Kitab', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.3', uraian: 'Hasil seragam murid', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.4', uraian: 'Pendaftaran murid baru', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.5', uraian: 'Koperasi Madrasah', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'V', categoryName: 'PENDAPATAN ASLI MADRASAH', noUrut: 'V', noKode: '5.6', uraian: 'Foto Copy', jumlahAnggaran: 0 },
+  { type: 'PENERIMAAN', categoryCode: 'VI', categoryName: 'PENDAPATAN IKHTIBAR', noUrut: 'VI', noKode: '6.1', uraian: 'Iuran Haflatul Ikhtibar', jumlahAnggaran: 0 },
   { type: 'PENERIMAAN', categoryCode: 'VI', categoryName: 'PENDAPATAN IKHTIBAR', noUrut: 'VI', noKode: '6.2', uraian: 'Donatur alumni & panitia', jumlahAnggaran: 0 },
   { type: 'PENERIMAAN', categoryCode: 'VI', categoryName: 'PENDAPATAN IKHTIBAR', noUrut: 'VI', noKode: '6.3', uraian: "Sumbangan dari jam'iyyah", jumlahAnggaran: 0 },
 
   // PENGELUARAN
-  { type: 'PENGELUARAN', categoryCode: 'I', categoryName: 'BISYAROH DAN TUNJANGAN', noUrut: 'I', noKode: '1.1', uraian: 'Bisyaroh Guru', jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'I', categoryName: 'BISYAROH DAN TUNJANGAN', noUrut: 'I', noKode: '1.2', uraian: 'Tunjangan guru', jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'I', categoryName: 'BISYAROH DAN TUNJANGAN', noUrut: 'I', noKode: '1.3', uraian: 'Bisyaroh TU', jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'I', categoryName: 'BISYAROH DAN TUNJANGAN', noUrut: 'I', noKode: '1.4', uraian: 'Subsidi Syahriyah Murid / Beasiswa', jumlahAnggaran: 0 },
+  { type: 'PENGELUARAN', categoryCode: 'I', categoryName: 'BISYAROH DAN TUNJANGAN', noUrut: 'I', noKode: '1.1', uraian: 'Bisyaroh Guru & Tunjangan', jumlahAnggaran: 0 },
+  { type: 'PENGELUARAN', categoryCode: 'I', categoryName: 'BISYAROH DAN TUNJANGAN', noUrut: 'I', noKode: '1.2', uraian: 'Bisyaroh TU', jumlahAnggaran: 0 },
+  { type: 'PENGELUARAN', categoryCode: 'I', categoryName: 'BISYAROH DAN TUNJANGAN', noUrut: 'I', noKode: '1.3', uraian: 'Subsidi Syahriyah Murid / Beasiswa', jumlahAnggaran: 0 },
   { type: 'PENGELUARAN', categoryCode: 'II', categoryName: 'BIAYA PEMELIHARAAN', noUrut: 'II', noKode: '2.1', uraian: 'Dampar dan bangku', jumlahAnggaran: 0 },
   { type: 'PENGELUARAN', categoryCode: 'II', categoryName: 'BIAYA PEMELIHARAAN', noUrut: 'II', noKode: '2.2', uraian: 'Pembayaran listrik, Internet dll', jumlahAnggaran: 0 },
   { type: 'PENGELUARAN', categoryCode: 'II', categoryName: 'BIAYA PEMELIHARAAN', noUrut: 'II', noKode: '2.3', uraian: 'Pengecatan dan perbaikan gedung', jumlahAnggaran: 0 },
@@ -63,12 +64,10 @@ export const baseRAPBMSkeleton = [
   { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.2', uraian: 'Pelaksanaan KMGF', jumlahAnggaran: 0 },
   { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.3', uraian: 'Muammar', jumlahAnggaran: 0 },
   { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.4', uraian: 'Rapat Internal Guru', jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.5', uraian: 'Konsumsi GT PPS', jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.6', uraian: 'Akreditasi', jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.7', uraian: "Kegiatan Musyawaroh Kelas, Pembinaan Baca Kitab, Al-Qur'an dll", jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.8', uraian: 'Tamrin, Pra Imni, Imda dll', jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.9', uraian: 'Rapat Koordinasi', jumlahAnggaran: 0 },
-  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.10', uraian: 'PHBI', jumlahAnggaran: 0 },
+  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.5', uraian: 'Tamrin', jumlahAnggaran: 0 },
+  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.6', uraian: 'Pembayaran IMDA', jumlahAnggaran: 0 },
+  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.7', uraian: 'Pembayaran IMNI', jumlahAnggaran: 0 },
+  { type: 'PENGELUARAN', categoryCode: 'IV', categoryName: 'PENGEMBANGAN PENDIDIK DAN TENAGA PENDIDIKAN', noUrut: 'IV', noKode: '4.8', uraian: 'PHBI', jumlahAnggaran: 0 },
   { type: 'PENGELUARAN', categoryCode: 'V', categoryName: 'HAFLAH DAN LAIN-LAIN', noUrut: 'V', noKode: '5.1', uraian: 'Seragam guru dan panitia', jumlahAnggaran: 0 },
   { type: 'PENGELUARAN', categoryCode: 'V', categoryName: 'HAFLAH DAN LAIN-LAIN', noUrut: 'V', noKode: '5.2', uraian: 'Haflatul ikhtibar', jumlahAnggaran: 0 },
   { type: 'PENGELUARAN', categoryCode: 'V', categoryName: 'HAFLAH DAN LAIN-LAIN', noUrut: 'V', noKode: '5.3', uraian: 'Pengeluaran insidentil', jumlahAnggaran: 0 },
@@ -93,6 +92,82 @@ export function getDefaultRAPBMForYear(tahunAjaran: string): RAPBMItem[] {
   });
 }
 
+export function alignRapbmDataToSkeleton(items: RAPBMItem[], years: string[]): RAPBMItem[] {
+  if (!items) items = [];
+  const allYearsToProcess = Array.from(new Set([
+    ...years,
+    ...items.map(i => i.tahunAjaran).filter(Boolean) as string[],
+    '1446 - 1447 H.'
+  ]));
+
+  let result: RAPBMItem[] = [];
+  const usedIds = new Set<string>();
+
+  allYearsToProcess.forEach(yr => {
+    const yrItems = items.filter(i => i.tahunAjaran === yr || (!i.tahunAjaran && yr === '1446 - 1447 H.'));
+    
+    // Generate standard skeleton items for this year
+    const stdItems = baseRAPBMSkeleton.map((sk, idx) => {
+      const isIncome = sk.type === 'PENERIMAAN';
+      
+      // Try to find matching item from yrItems that hasn't been claimed yet
+      let found = yrItems.find(i => !usedIds.has(i.id) && i.type === sk.type && i.noKode === sk.noKode);
+
+      if (!found) {
+        // Fallback search by uraian
+        found = yrItems.find(i => !usedIds.has(i.id) && i.type === sk.type && i.uraian && (
+          i.uraian.toLowerCase().trim() === sk.uraian.toLowerCase().trim() ||
+          (sk.uraian.includes('Bisyaroh Guru') && i.uraian.includes('Bisyaroh Guru')) ||
+          (sk.uraian.includes('Iuran Haflatul') && i.uraian.includes('Iuran'))
+        ));
+      }
+
+      // Legacy code migrations
+      if (!found && sk.type === 'PENGELUARAN' && sk.noKode === '1.2' && sk.uraian === 'Bisyaroh TU') {
+        found = yrItems.find(i => !usedIds.has(i.id) && i.type === 'PENGELUARAN' && i.noKode === '1.3' && i.uraian === 'Bisyaroh TU');
+      }
+      if (!found && sk.type === 'PENGELUARAN' && sk.noKode === '1.3' && sk.uraian.includes('Subsidi')) {
+        found = yrItems.find(i => !usedIds.has(i.id) && i.type === 'PENGELUARAN' && i.noKode === '1.4' && i.uraian.includes('Subsidi'));
+      }
+
+      let anggaran = found ? found.jumlahAnggaran : 0;
+      let realita = found ? found.realita : 0;
+
+      // Special rule: Sisa tahun lalu tidak ditampilkan di tahun berikutnya
+      if (sk.uraian.toUpperCase().includes('SISA TAHUN LALU')) {
+        anggaran = 0;
+        realita = 0;
+      }
+
+      const yrClean = yr.replace(/[^a-zA-Z0-9]/g, '');
+      let finalId = found ? found.id : `rapbm-${yrClean}-${sk.type.toLowerCase()}-${sk.noKode.replace(/\./g, '_')}`;
+
+      if (usedIds.has(finalId)) {
+        finalId = `rapbm-${yrClean}-${sk.type.toLowerCase()}-${sk.noKode.replace(/\./g, '_')}-${idx}`;
+      }
+      usedIds.add(finalId);
+
+      return {
+        id: finalId,
+        tahunAjaran: yr,
+        type: sk.type as 'PENERIMAAN' | 'PENGELUARAN',
+        categoryCode: sk.categoryCode,
+        categoryName: sk.categoryName,
+        noUrut: sk.noUrut,
+        noKode: sk.noKode,
+        uraian: sk.uraian,
+        jumlahAnggaran: anggaran,
+        realita: isIncome ? (anggaran > 0 ? anggaran : realita) : realita,
+        persentase: anggaran > 0 ? Math.round((realita / anggaran) * 100) : 0,
+      };
+    });
+
+    result = [...result, ...stdItems];
+  });
+
+  return result;
+}
+
 // Initial Data with multiple years populated
 export const initialRAPBMData: RAPBMItem[] = getDefaultRAPBMForYear('1446 - 1447 H.').map((item) => {
   let anggaran = 0;
@@ -100,22 +175,21 @@ export const initialRAPBMData: RAPBMItem[] = getDefaultRAPBMForYear('1446 - 1447
 
   if (item.type === 'PENERIMAAN') {
     switch (item.uraian) {
-      case 'SISA TAHUN LALU': anggaran = 1025500; break;
+      case 'SISA TAHUN LALU': anggaran = 0; break;
       case 'Uang Syahriyah': anggaran = 10560000; break;
       case 'Dansos': anggaran = 220000; break;
       case 'Sawah yang disewakan': anggaran = 1000000; break;
       case 'Hasil Kitab': anggaran = 1500000; break;
       case 'Hasil seragam murid': anggaran = 850000; break;
       case 'Pendaftaran murid baru': anggaran = 800000; break;
-      case 'Iuran wali murid': anggaran = 4500000; break;
+      case 'Iuran Haflatul Ikhtibar': anggaran = 4500000; break;
       case 'Donatur alumni & panitia': anggaran = 4000000; break;
       case "Sumbangan dari jam'iyyah": anggaran = 1500000; break;
     }
     realita = anggaran; // For PENERIMAAN, realita is usually equal to anggaran initially or matches it.
   } else if (item.type === 'PENGELUARAN') {
     switch (item.uraian) {
-      case 'Bisyaroh Guru': anggaran = 10589000; realita = 6533500; break;
-      case 'Tunjangan guru': anggaran = 3240000; realita = 1890000; break;
+      case 'Bisyaroh Guru & Tunjangan': anggaran = 13829000; realita = 8423500; break;
       case 'Bisyaroh TU': anggaran = 1200000; realita = 800000; break;
       case 'Subsidi Syahriyah Murid / Beasiswa': anggaran = 1200000; realita = 1200000; break;
       case 'Pembayaran listrik, Internet dll': anggaran = 600000; realita = 600000; break;
@@ -136,8 +210,7 @@ export const initialRAPBMData: RAPBMItem[] = getDefaultRAPBMForYear('1446 - 1447
       case 'Pelaksanaan KMGF': anggaran = 500000; realita = 500000; break;
       case 'Muammar': anggaran = 500000; realita = 275000; break;
       case 'Rapat Internal Guru': anggaran = 500000; realita = 500000; break;
-      case 'Tamrin, Pra Imni, Imda dll': anggaran = 500000; realita = 350000; break;
-      case 'Rapat Koordinasi': anggaran = 90000; realita = 90000; break;
+      case 'Tamrin': anggaran = 500000; realita = 350000; break;
       case 'Haflatul ikhtibar': anggaran = 2750000; realita = 2750000; break;
     }
   }
