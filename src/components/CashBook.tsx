@@ -197,19 +197,21 @@ export const CashBook: React.FC<CashBookProps> = ({
     }
   }, [isOpenModal, trxType]);
 
-  const handleRapbmCodeChange = (code: string) => {
-    setSelectedRapbmCode(code);
-    if (!code) {
+  const handleRapbmCodeChange = (val: string) => {
+    setSelectedRapbmCode(val);
+    if (!val) {
       setCategory(trxType === 'IN' ? 'PENDAPATAN RUTIN' : 'PENGELUARAN LAIN');
       setDescription('');
       return;
     }
     const item = availableRapbmItems.find(
-      (r) => r.noKode === code || r.id === code
+      (r) => r.uraian === val || r.noKode === val || r.id === val
     );
     if (item) {
       setCategory(item.categoryName);
       setDescription(item.uraian);
+    } else {
+      setDescription(val);
     }
   };
 
@@ -856,11 +858,11 @@ export const CashBook: React.FC<CashBookProps> = ({
                 </div>
               </div>
 
-              {/* Link RAPBM Code */}
+              {/* Link RAPBM Item */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block font-semibold text-slate-700">
-                    Hubungkan dengan Kode RAPBM (Opsional)
+                    Pilih Uraian RAPBM Terkait (Opsional)
                   </label>
                   <button
                     type="button"
@@ -868,29 +870,19 @@ export const CashBook: React.FC<CashBookProps> = ({
                     className="text-emerald-700 hover:text-emerald-800 font-bold text-xs flex items-center space-x-1 transition"
                   >
                     <PlusCircle className="w-3.5 h-3.5" />
-                    <span>{isAddingNewRapbm ? 'Batal' : `+ Tambah Item ${trxType === 'IN' ? 'Penerimaan' : 'Pengeluaran'} Baru`}</span>
+                    <span>{isAddingNewRapbm ? 'Batal' : `+ Tambah Uraian ${trxType === 'IN' ? 'Penerimaan' : 'Pengeluaran'} Baru`}</span>
                   </button>
                 </div>
 
                 {isAddingNewRapbm ? (
                   <div className="p-3 bg-emerald-50/80 border border-emerald-300 rounded-xl space-y-2.5 my-1 animate-in fade-in duration-150">
-                    <p className="font-bold text-xs text-emerald-900">Tambah Item {trxType === 'IN' ? 'Penerimaan' : 'Pengeluaran'} RAPBM Baru:</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <p className="font-bold text-xs text-emerald-900">Tambah Uraian {trxType === 'IN' ? 'Penerimaan' : 'Pengeluaran'} RAPBM Baru:</p>
+                    <div className="space-y-2">
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">No Kode</label>
-                        <input
-                          type="text"
-                          placeholder="misal: 7.1"
-                          value={newKodeRapbm}
-                          onChange={(e) => setNewKodeRapbm(e.target.value)}
-                          className="w-full p-2 bg-white border border-emerald-200 rounded-lg text-xs"
-                        />
-                      </div>
-                      <div className="col-span-2">
                         <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Nama / Uraian Item *</label>
                         <input
                           type="text"
-                          placeholder="misal: Sumbangan Donatur / Pembelian Alat"
+                          placeholder="misal: Sumbangan Donatur / Pembelian Alat Kantor"
                           value={newUraianRapbm}
                           onChange={(e) => setNewUraianRapbm(e.target.value)}
                           required
@@ -919,12 +911,12 @@ export const CashBook: React.FC<CashBookProps> = ({
                   <select
                     value={selectedRapbmCode}
                     onChange={(e) => handleRapbmCodeChange(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-medium"
                   >
-                    <option value="">-- Tanpa Kode RAPBM (Otomatis Diarahkan Ke Item Terkait) --</option>
+                    <option value="">-- Pilih Uraian RAPBM (Atau Ketik Uraian Bebas) --</option>
                     {availableRapbmItems.map((item) => (
-                      <option key={item.id} value={item.noKode || item.id}>
-                        {item.noKode ? `${item.noKode} - ` : ''}{item.uraian} ({item.categoryName})
+                      <option key={item.id} value={item.uraian}>
+                        {item.uraian} ({item.categoryName})
                       </option>
                     ))}
                   </select>

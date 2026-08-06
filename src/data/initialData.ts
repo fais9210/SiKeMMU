@@ -133,12 +133,6 @@ export function alignRapbmDataToSkeleton(items: RAPBMItem[], years: string[]): R
       let anggaran = found ? found.jumlahAnggaran : 0;
       let realita = found ? found.realita : 0;
 
-      // Special rule: Sisa tahun lalu tidak ditampilkan di tahun berikutnya
-      if (sk.uraian.toUpperCase().includes('SISA TAHUN LALU')) {
-        anggaran = 0;
-        realita = 0;
-      }
-
       const yrClean = yr.replace(/[^a-zA-Z0-9]/g, '');
       let finalId = found ? found.id : `rapbm-${yrClean}-${sk.type.toLowerCase()}-${sk.noKode.replace(/\./g, '_')}`;
 

@@ -202,67 +202,247 @@ export default function App() {
     activeYearTransactions.forEach((t) => {
       const isIncome = t.type === 'IN';
       const targetType = isIncome ? 'PENERIMAAN' : 'PENGELUARAN';
-      const typeFilteredRapbm = activeRapbm.filter((item) => item.type === targetType);
-
-      if (typeFilteredRapbm.length === 0) return;
+      const descUpper = (t.description || '').toUpperCase().trim();
+      const catUpper = (t.category || '').toUpperCase().trim();
+      const codeTrim = (t.rapbmCode || '').trim().toLowerCase();
 
       let matchedItem: RAPBMItem | undefined = undefined;
 
-      // 1. Direct code or ID or exact uraian match
-      if (t.rapbmCode) {
-        const codeTrim = t.rapbmCode.trim().toLowerCase();
-        matchedItem = typeFilteredRapbm.find(
+      // 1. Direct rapbmCode match (highest priority)
+      if (codeTrim) {
+        matchedItem = activeRapbm.find(
           (item) =>
-            (item.noKode && item.noKode.trim().toLowerCase() === codeTrim) ||
-            (item.id && item.id.trim().toLowerCase() === codeTrim) ||
-            (item.uraian && item.uraian.trim().toLowerCase() === codeTrim)
+            item.type === targetType &&
+            (item.noKode.trim().toLowerCase() === codeTrim || item.id.trim().toLowerCase() === codeTrim)
         );
+        if (!matchedItem) {
+          matchedItem = activeRapbm.find(
+            (item) =>
+              item.noKode.trim().toLowerCase() === codeTrim || item.id.trim().toLowerCase() === codeTrim
+          );
+        }
       }
 
-      // 2. Exact or substring match on description vs uraian
-      if (!matchedItem && t.description) {
-        const tDesc = t.description.toLowerCase().trim();
-        matchedItem = typeFilteredRapbm.find((item) => {
-          const u = (item.uraian || '').toLowerCase().trim();
-          return u && (tDesc === u || tDesc.includes(u) || u.includes(tDesc));
+      const candidates = activeRapbm.filter((item) => item.type === targetType);
+      const searchPool = candidates.length > 0 ? candidates : activeRapbm;
+
+      // 2. Exact or Substring Match on Description vs Uraian
+      if (!matchedItem && descUpper) {
+        matchedItem = searchPool.find((item) => {
+          const u = (item.uraian || '').toUpperCase().trim();
+          return u && (descUpper === u || descUpper.includes(u) || u.includes(descUpper));
         });
       }
 
-      // 3. Keyword token matching
-      if (!matchedItem && t.description) {
-        const descTokens = t.description.toLowerCase().split(/[\s,.\/-]+/).filter((w) => w.length >= 3);
-        matchedItem = typeFilteredRapbm.find((item) => {
-          const itemTokens = (item.uraian || '').toLowerCase().split(/[\s,.\/-]+/).filter((w) => w.length >= 3);
-          return itemTokens.some((iToken) => descTokens.some((dToken) => dToken.includes(iToken) || iToken.includes(dToken)));
-        });
-      }
-
-      // 4. Category match
-      if (!matchedItem && t.category) {
-        const tCat = t.category.toLowerCase().trim();
-        matchedItem = typeFilteredRapbm.find((item) => {
-          const cName = (item.categoryName || '').toLowerCase().trim();
-          const cCode = (item.categoryCode || '').toLowerCase().trim();
-          return tCat === cName || tCat === cCode;
-        });
-      }
-
-      // 5. Fallback item if still unmatched
+      // 3. Domain Specific Keyword Rules
       if (!matchedItem) {
         if (!isIncome) {
-          // Fallback to Pengeluaran insidentil or last item
-          matchedItem =
-            typeFilteredRapbm.find((item) => item.noKode === '5.3' || item.uraian.toLowerCase().includes('insidentil')) ||
-            typeFilteredRapbm[typeFilteredRapbm.length - 1];
+          // PENGELUARAN
+          if (descUpper.includes('TU') || descUpper.includes('TATA USAHA')) {
+            if (descUpper.includes('BISYAROH') || descUpper.includes('GAJI') || descUpper.includes('STAF') || descUpper.includes('STAFF')) {
+              matchedItem = searchPool.find((i) => i.noKode === '1.2' || i.uraian.toLowerCase().includes('bisyaroh tu'));
+            }
+          }
+          if (!matchedItem && (descUpper.includes('BISYAROH') || descUpper.includes('GAJI') || descUpper.includes('GURU') || descUpper.includes('USTADZ'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '1.1' || i.uraian.toLowerCase().includes('bisyaroh guru'));
+          }
+          if (!matchedItem && (descUpper.includes('BEASISWA') || descUpper.includes('SUBSIDI'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '1.3');
+          }
+          if (!matchedItem && (descUpper.includes('DAMPAR') || descUpper.includes('BANGKU') || descUpper.includes('MEJA'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.1');
+          }
+          if (!matchedItem && (descUpper.includes('LISTRIK') || descUpper.includes('INTERNET') || descUpper.includes('WIFI') || descUpper.includes('PLN') || descUpper.includes('PULSA'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.2');
+          }
+          if (!matchedItem && (descUpper.includes('CAT') || descUpper.includes('PENGECATAN') || descUpper.includes('GEDUNG'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.3');
+          }
+          if (!matchedItem && (descUpper.includes('KOMPUTER') || descUpper.includes('PRINTER') || descUpper.includes('LAPTOP'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.4');
+          }
+          if (!matchedItem && descUpper.includes('LAMPU')) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.5');
+          }
+          if (!matchedItem && descUpper.includes('PAPAN TULIS')) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.6');
+          }
+          if (!matchedItem && (descUpper.includes('SAMPAH') || descUpper.includes('SAPU') || descUpper.includes('SULAK'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.7');
+          }
+          if (!matchedItem && (descUpper.includes('ATAP') || descUpper.includes('JENDELA') || descUpper.includes('PINTU'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.8');
+          }
+          if (!matchedItem && descUpper.includes('KIPAS')) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.9');
+          }
+          if (!matchedItem && (descUpper.includes('KAMAR MANDI') || descUpper.includes('WC') || descUpper.includes('TOILET'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.10');
+          }
+          if (!matchedItem && (descUpper.includes('BANNER') || descUpper.includes('JADWAL') || descUpper.includes('KALENDER'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.1');
+          }
+          if (!matchedItem && (descUpper.includes('BUFALLO') || descUpper.includes('BUFFALO'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.2');
+          }
+          if (!matchedItem && (descUpper.includes('HVS') || descUpper.includes('KERTAS'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.3');
+          }
+          if (!matchedItem && (descUpper.includes('ISOLASI') || descUpper.includes('STAPLES') || descUpper.includes('LAKBAN') || descUpper.includes('GUNTING'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.4');
+          }
+          if (!matchedItem && descUpper.includes('KAPUR')) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.5');
+          }
+          if (!matchedItem && (descUpper.includes('FOTOKOPI') || descUpper.includes('FOTO COPY') || descUpper.includes('JILID'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.6');
+          }
+          if (!matchedItem && (descUpper.includes('BALLPOINT') || descUpper.includes('PULPEN') || descUpper.includes('SPIDOL'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.7');
+          }
+          if (!matchedItem && (descUpper.includes('PENGHAPUS') || descUpper.includes('TAPLAK'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.8');
+          }
+          if (!matchedItem && (descUpper.includes('PROPOSAL') || descUpper.includes('SPJ') || descUpper.includes('MOU'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.9');
+          }
+          if (!matchedItem && descUpper.includes('TINTA')) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.10');
+          }
+          if (!matchedItem && descUpper.includes('RAPIM')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.1');
+          }
+          if (!matchedItem && descUpper.includes('KMGF')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.2');
+          }
+          if (!matchedItem && descUpper.includes('MUAMMAR')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.3');
+          }
+          if (!matchedItem && descUpper.includes('RAPAT')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.4');
+          }
+          if (!matchedItem && descUpper.includes('TAMRIN')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.5');
+          }
+          if (!matchedItem && descUpper.includes('IMDA')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.6');
+          }
+          if (!matchedItem && descUpper.includes('IMNI')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.7');
+          }
+          if (!matchedItem && (descUpper.includes('PHBI') || descUpper.includes('MAULID') || descUpper.includes('ISRA'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.8');
+          }
+          if (!matchedItem && descUpper.includes('SERAGAM')) {
+            matchedItem = searchPool.find((i) => i.noKode === '5.1');
+          }
+          if (!matchedItem && (descUpper.includes('HAFLATUL') || descUpper.includes('HAFLAH') || descUpper.includes('IKHTIBAR'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '5.2');
+          }
         } else {
-          // Fallback to Penerimaan Lain / Jam'iyyah or last item
+          // PENERIMAAN
+          if (descUpper.includes('SISA TAHUN LALU') || descUpper.includes('SALDO AWAL') || descUpper.includes('SISA KAS')) {
+            matchedItem = searchPool.find((i) => i.noKode === '1' || i.uraian.toUpperCase().includes('SISA TAHUN LALU'));
+          }
+          if (!matchedItem && (descUpper.includes('SYAHRIYAH') || descUpper.includes('SYAHRIAH') || descUpper.includes('SPP'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.1');
+          }
+          if (!matchedItem && descUpper.includes('IMDA')) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.2');
+          }
+          if (!matchedItem && descUpper.includes('IMNI')) {
+            matchedItem = searchPool.find((i) => i.noKode === '2.3');
+          }
+          if (!matchedItem && (descUpper.includes('BPPDGS') || descUpper.includes('BOS') || descUpper.includes('PROVINSI'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '3.1');
+          }
+          if (!matchedItem && descUpper.includes('DANSOS')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.1');
+          }
+          if (!matchedItem && descUpper.includes('SAWAH')) {
+            matchedItem = searchPool.find((i) => i.noKode === '4.2');
+          }
+          if (!matchedItem && descUpper.includes('TABUNGAN')) {
+            matchedItem = searchPool.find((i) => i.noKode === '5.1');
+          }
+          if (!matchedItem && descUpper.includes('KITAB')) {
+            matchedItem = searchPool.find((i) => i.noKode === '5.2');
+          }
+          if (!matchedItem && descUpper.includes('SERAGAM')) {
+            matchedItem = searchPool.find((i) => i.noKode === '5.3');
+          }
+          if (!matchedItem && (descUpper.includes('PENDAFTARAN') || descUpper.includes('MURID BARU'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '5.4');
+          }
+          if (!matchedItem && descUpper.includes('KOPERASI')) {
+            matchedItem = searchPool.find((i) => i.noKode === '5.5');
+          }
+          if (!matchedItem && (descUpper.includes('FOTOKOPI') || descUpper.includes('FOTO COPY'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '5.6');
+          }
+          if (!matchedItem && (descUpper.includes('HAFLATUL') || descUpper.includes('IKHTIBAR'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '6.1');
+          }
+          if (!matchedItem && (descUpper.includes('DONATUR') || descUpper.includes('ALUMNI'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '6.2');
+          }
+          if (!matchedItem && (descUpper.includes('JAM\'IYYAH') || descUpper.includes('JAMIYYAH'))) {
+            matchedItem = searchPool.find((i) => i.noKode === '6.3');
+          }
+        }
+      }
+
+      // 4. Token Overlap Scoring Match
+      if (!matchedItem && descUpper) {
+        const descTokens = descUpper.split(/[\s,.\/-]+/).filter((w) => w.length >= 3 && !['DAN', 'ATAU', 'YANG', 'BIAYA', 'PENGELUARAN', 'PENERIMAAN'].includes(w));
+        let maxScore = 0;
+        let bestCandidate: RAPBMItem | undefined = undefined;
+
+        searchPool.forEach((item) => {
+          const itemTokens = (item.uraian || '').toUpperCase().split(/[\s,.\/-]+/).filter((w) => w.length >= 3 && !['DAN', 'ATAU', 'YANG', 'BIAYA', 'PENGELUARAN', 'PENERIMAAN'].includes(w));
+          let score = 0;
+          itemTokens.forEach((iToken) => {
+            if (descTokens.some((dToken) => dToken === iToken || dToken.includes(iToken) || iToken.includes(dToken))) {
+              score += 10;
+            }
+          });
+          if (catUpper && (item.categoryName.toUpperCase().includes(catUpper) || catUpper.includes(item.categoryName.toUpperCase()))) {
+            score += 2;
+          }
+          if (score > maxScore) {
+            maxScore = score;
+            bestCandidate = item;
+          }
+        });
+
+        if (maxScore > 0) {
+          matchedItem = bestCandidate;
+        }
+      }
+
+      // 5. Category Match
+      if (!matchedItem && catUpper) {
+        matchedItem = searchPool.find((item) => {
+          const cName = (item.categoryName || '').toUpperCase().trim();
+          const cCode = (item.categoryCode || '').toUpperCase().trim();
+          return catUpper === cName || catUpper === cCode;
+        });
+      }
+
+      // 6. Fallback
+      if (!matchedItem) {
+        if (!isIncome) {
           matchedItem =
-            typeFilteredRapbm.find(
+            searchPool.find((item) => item.noKode === '5.3' || item.uraian.toLowerCase().includes('insidentil')) ||
+            searchPool[searchPool.length - 1];
+        } else {
+          matchedItem =
+            searchPool.find(
               (item) =>
                 item.noKode === '6.3' ||
                 item.uraian.toLowerCase().includes('jam\'iyyah') ||
                 item.uraian.toLowerCase().includes('lain')
-            ) || typeFilteredRapbm[typeFilteredRapbm.length - 1];
+            ) || searchPool[searchPool.length - 1];
         }
       }
 
@@ -292,19 +472,10 @@ export default function App() {
         targetRealita = Math.max(targetRealita, totalBisyarohTU);
       }
 
-      // Sisa dana dari periode atau tahun ajaran sebelumnya tidak ditampilkan di tahun berikutnya
-      if (item.uraian && item.uraian.toUpperCase().includes('SISA TAHUN LALU')) {
-        targetRealita = 0;
-      }
-
       // For PENERIMAAN items, update targetAnggaran if not explicitly set
       let targetAnggaran = item.jumlahAnggaran;
-      if (item.type === 'PENERIMAAN') {
-        if (item.uraian && item.uraian.toUpperCase().includes('SISA TAHUN LALU')) {
-          targetAnggaran = 0;
-        } else if (item.jumlahAnggaran <= 0) {
-          targetAnggaran = targetRealita;
-        }
+      if (item.type === 'PENERIMAAN' && item.jumlahAnggaran <= 0) {
+        targetAnggaran = targetRealita;
       }
 
       if (item.realita !== targetRealita || item.jumlahAnggaran !== targetAnggaran) {
@@ -328,7 +499,7 @@ export default function App() {
     if (hasChanges) {
       setRapbmData(updated);
     }
-  }, [payrolls, studentPayments, transactions, selectedYear]);
+  }, [payrolls, studentPayments, transactions, selectedYear, rapbmData]);
 
   // Filter RAPBM for current selected year
   const currentYearRapbm = rapbmData.filter(

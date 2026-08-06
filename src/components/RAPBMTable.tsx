@@ -449,13 +449,11 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
             <colgroup>
               {/* PENERIMAAN COLUMNS */}
               <col className="w-12" />
-              <col className="w-16" />
               <col className="w-auto" />
               <col className="w-36" />
 
               {/* PENGELUARAN COLUMNS */}
               <col className="w-12" />
-              <col className="w-16" />
               <col className="w-auto" />
               <col className="w-36" />
               <col className="w-36" />
@@ -464,7 +462,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
             <thead>
               {/* Super Header */}
               <tr className="bg-emerald-900 text-white font-bold uppercase tracking-wider text-center">
-                <th colSpan={4} className="py-2.5 px-3 border-r border-emerald-800">
+                <th colSpan={3} className="py-2.5 px-3 border-r border-emerald-800">
                   <div className="flex items-center justify-between px-2">
                     <span>PENERIMAAN</span>
                     <button
@@ -477,7 +475,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     </button>
                   </div>
                 </th>
-                <th colSpan={6} className="py-2.5 px-3">
+                <th colSpan={5} className="py-2.5 px-3">
                   <div className="flex items-center justify-between px-2">
                     <span>PENGELUARAN</span>
                     <button
@@ -495,13 +493,11 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                 {/* Penerimaan */}
                 <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">No</th>
-                <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">Kode</th>
                 <th className="py-2.5 px-3 border-r">Uraian</th>
                 <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Jumlah (Rp)</th>
 
                 {/* Pengeluaran */}
                 <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">No</th>
-                <th className="py-2.5 px-2 text-center border-r whitespace-nowrap">Kode</th>
                 <th className="py-2.5 px-3 border-r">Uraian</th>
                 <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Anggaran (Rp)</th>
                 <th className="py-2.5 px-3 text-right border-r whitespace-nowrap">Realita (Rp)</th>
@@ -519,9 +515,6 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     {/* PENERIMAAN CELLS */}
                     <td className="py-2.5 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 whitespace-nowrap">
                       {p ? p.categoryCode : ''}
-                    </td>
-                    <td className="py-2.5 px-2 text-center text-slate-600 border-r font-mono whitespace-nowrap">
-                      {p ? p.noKode : ''}
                     </td>
                     <td className="py-2 px-2 border-r font-medium leading-relaxed">
                       {p ? (
@@ -632,9 +625,6 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                     {/* PENGELUARAN CELLS */}
                     <td className="py-2.5 px-2 text-center font-bold text-slate-500 border-r bg-slate-50/50 whitespace-nowrap">
                       {k ? k.categoryCode : ''}
-                    </td>
-                    <td className="py-2.5 px-2 text-center text-slate-600 border-r font-mono whitespace-nowrap">
-                      {k ? k.noKode : ''}
                     </td>
                     <td className="py-2 px-2 border-r font-medium leading-relaxed">
                       {k ? (
@@ -795,14 +785,14 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
             {/* TOTAL FOOTER ROW */}
             <tfoot>
               <tr className="bg-slate-900 text-white font-extrabold text-xs">
-                <td colSpan={2} className="py-3 px-3 text-center border-r border-slate-700">TOTAL</td>
-                <td className="py-3 px-3 border-r border-slate-700">JUMLAH PENERIMAAN</td>
+                <td className="py-3 px-2 text-center border-r border-slate-700">TOTAL</td>
+                <td className="py-3 px-3 border-r border-slate-700 font-bold">JUMLAH PENERIMAAN</td>
                 <td className="py-3 px-3 text-right border-r border-slate-700 text-emerald-300 text-sm">
                   {formatCurrency(totalInRealita)}
                 </td>
 
-                <td colSpan={2} className="py-3 px-3 text-center border-r border-slate-700">TOTAL</td>
-                <td className="py-3 px-3 border-r border-slate-700">JUMLAH PENGELUARAN</td>
+                <td className="py-3 px-2 text-center border-r border-slate-700">TOTAL</td>
+                <td className="py-3 px-3 border-r border-slate-700 font-bold">JUMLAH PENGELUARAN</td>
                 <td className="py-3 px-3 text-right border-r border-slate-700 text-amber-200 text-sm">
                   {formatCurrency(totalOutAnggaran)}
                 </td>
@@ -941,19 +931,6 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Nomor / Kode RAPBM (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder={modalType === 'PENERIMAAN' ? 'misal: 6.4 atau 7.1' : 'misal: 5.7 atau 6.1'}
-                  value={newKode}
-                  onChange={(e) => setNewKode(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
                   Kategori Group (Opsional)
                 </label>
                 <input
@@ -1025,7 +1002,7 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
                   Edit Item RAPBM ({fullEditItem.type})
                 </h3>
                 <p className="text-xs text-emerald-300">
-                  Kode: <span className="font-mono font-bold">{fullEditItem.noKode}</span> | TA {selectedYear}
+                  TA {selectedYear}
                 </p>
               </div>
               <button
@@ -1037,29 +1014,16 @@ export const RAPBMTable: React.FC<RAPBMTableProps> = ({
             </div>
 
             <form onSubmit={handleSaveFullEdit} className="p-5 space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Nomor / Kode RAPBM
-                  </label>
-                  <input
-                    type="text"
-                    value={fullEditKode}
-                    onChange={(e) => setFullEditKode(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Kategori / Group
-                  </label>
-                  <input
-                    type="text"
-                    value={fullEditCategory}
-                    onChange={(e) => setFullEditCategory(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Kategori / Group
+                </label>
+                <input
+                  type="text"
+                  value={fullEditCategory}
+                  onChange={(e) => setFullEditCategory(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
               </div>
 
               <div>
