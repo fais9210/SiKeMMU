@@ -165,9 +165,12 @@ export function generateRAPBMPDF(
   doc.save(`RAPBM_${madrasah.tahunAjaranHijri.replace(/\s+/g, '_')}.pdf`);
 }
 
-export function generateSlipGajiPDF(
+function drawSingleSlipQuadrant(
+  doc: jsPDF,
   madrasah: MadrasahInfo,
-  payroll: PayrollRecord
+  payroll: PayrollRecord,
+  offsetX: number,
+  offsetY: number
 ) {
   const displayHijriDate = formatHijriDateForAcademicYear(
     payroll.dateGeneratedHijri,
@@ -176,93 +179,158 @@ export function generateSlipGajiPDF(
     madrasah.hijriOffsetDays
   );
 
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a5',
-  });
+  // Outer subtle frame/border for card
+  doc.setDrawColor(220, 225, 230);
+  doc.setLineWidth(0.2);
+  doc.rect(offsetX, offsetY, 98, 140);
 
-  // Header Box
+  // Header Kop
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text(madrasah.namaMadrasah.toUpperCase(), 74, 12, { align: 'center' });
+  doc.setFontSize(8.5);
+  doc.setTextColor(6, 78, 59); // Emerald-900
+  doc.text(madrasah.namaMadrasah.toUpperCase(), offsetX + 49, offsetY + 6, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(`${madrasah.alamat}, Kec. ${madrasah.kecamatan}, Kab. ${madrasah.kabupaten}`, 74, 16, { align: 'center' });
-  doc.setLineWidth(0.5);
-  doc.line(10, 19, 138, 19);
+  doc.setFontSize(6);
+  doc.setTextColor(71, 85, 105); // Slate-600
+  doc.text(`${madrasah.alamat}, Kec. ${madrasah.kecamatan}, Kab. ${madrasah.kabupaten}`, offsetX + 49, offsetY + 9.5, { align: 'center' });
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(6, 78, 59);
+  doc.text(`Tahun Ajaran : ${payroll.tahunAjaran || madrasah.tahunAjaranHijri}`, offsetX + 49, offsetY + 12.5, { align: 'center' });
+
+  doc.setDrawColor(6, 78, 59);
+  doc.setLineWidth(0.4);
+  doc.line(offsetX + 4, offsetY + 14, offsetX + 94, offsetY + 14);
 
   // Title
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('SLIP BISYAROH GURU & STAF', 74, 25, { align: 'center' });
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('SLIP BISYAROH GURU & STAF', offsetX + 49, offsetY + 18, { align: 'center' });
+
   doc.setFont('helvetica', 'normal');
-  doc.text(`Bulan: ${payroll.monthHijri} (${payroll.monthGregorian})`, 74, 29, { align: 'center' });
+  doc.setFontSize(6);
+  doc.setTextColor(120, 53, 15);
+  doc.text(`Bulan: ${payroll.monthHijri} (${payroll.monthGregorian})`, offsetX + 49, offsetY + 21, { align: 'center' });
 
-  // Teacher Info
-  doc.setFontSize(8);
-  doc.text(`Nama Ustadz/ah : ${payroll.teacherName}`, 12, 36);
-  doc.text(`NIP / NUPTK     : ${payroll.nipNu}`, 12, 40);
-  doc.text(`Jabatan / Tugas  : ${payroll.role}`, 12, 44);
-  doc.text(`Jam Mengajar     : ${payroll.jamMengajar} Jam / Minggu`, 12, 48);
+  // Teacher Info Grid
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(6);
+  doc.text(`Nama Ustadz/ah : ${payroll.teacherName}`, offsetX + 4, offsetY + 25.5);
+  doc.text(`NIP / NUPTK     : ${payroll.nipNu}`, offsetX + 4, offsetY + 28.5);
+  doc.text(`Tugas / Jabatan  : ${payroll.role}`, offsetX + 4, offsetY + 31.5);
 
-  doc.text(`No. Kwitansi      : PAY-${payroll.id}`, 95, 36);
-  doc.text(`Tanggal Cetak   : ${displayHijriDate}`, 95, 40);
+  doc.text(`Jam Mengajar : ${payroll.jamMengajar} Jam / Mgg`, offsetX + 54, offsetY + 25.5);
+  doc.text(`No. Kwitansi  : PAY-${payroll.id}`, offsetX + 54, offsetY + 28.5);
+  doc.text(`Tanggal        : ${displayHijriDate}`, offsetX + 54, offsetY + 31.5);
 
   // Details Table
   const tableData: any[] = [
-    ['1. Bisyaroh Pokok (Jam Mengajar)', formatCurrency(payroll.bisyarohPokok)],
+    ['1. Bisyaroh Pokok Jam Mengajar', formatCurrency(payroll.bisyarohPokok)],
     ['2. Tunjangan Jabatan & Kehadiran', formatCurrency(payroll.tunjanganGuru)],
     ['3. Tunjangan Lain-lain', formatCurrency(payroll.tunjanganLain)],
     [{ content: 'TOTAL BISYAROH KOTOR', styles: { fontStyle: 'bold' } }, { content: formatCurrency(payroll.totalGajiKotor), styles: { fontStyle: 'bold' } }],
-    ['4. Potongan Infaq Syahriyah', formatCurrency(payroll.potonganInfaq)],
-    ['5. Potongan Tabungan Guru', formatCurrency(payroll.potonganTabungan)],
-    ['6. Potongan Lain-lain', formatCurrency(payroll.potonganLain)],
-    [{ content: 'TOTAL POTONGAN', styles: { fontStyle: 'bold' } }, { content: formatCurrency(payroll.totalPotongan), styles: { fontStyle: 'bold' } }],
+    ['4. Potongan Infaq Syahriyah', `-${formatCurrency(payroll.potonganInfaq)}`],
+    ['5. Potongan Tabungan Guru', `-${formatCurrency(payroll.potonganTabungan)}`],
   ];
+  if (payroll.potonganLain > 0) {
+    tableData.push(['6. Potongan Lain-lain', `-${formatCurrency(payroll.potonganLain)}`]);
+  }
+  tableData.push([{ content: 'TOTAL POTONGAN', styles: { fontStyle: 'bold' } }, { content: `-${formatCurrency(payroll.totalPotongan)}`, styles: { fontStyle: 'bold' } }]);
 
   autoTable(doc, {
-    startY: 52,
+    startY: offsetY + 33.5,
+    margin: { left: offsetX + 4 },
+    tableWidth: 90,
     head: [['Rincian Bisyaroh & Tunjangan', 'Jumlah (Rp)']],
     body: tableData,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 1.5 },
-    headStyles: { fillColor: [24, 80, 140], textColor: [255, 255, 255], halign: 'center' },
+    styles: { fontSize: 5.5, cellPadding: 0.8 },
+    headStyles: { fillColor: [6, 78, 59], textColor: [255, 255, 255], halign: 'center', fontStyle: 'bold' },
     columnStyles: {
-      0: { cellWidth: 88 },
-      1: { halign: 'right', cellWidth: 38 },
+      0: { cellWidth: 62 },
+      1: { halign: 'right', cellWidth: 28 },
     },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 4;
+  const finalY = (doc as any).lastAutoTable.finalY + 2;
 
-  // Take Home Pay Highlights
-  doc.setFillColor(235, 245, 255);
-  doc.rect(10, finalY, 128, 8, 'F');
+  // Take Home Pay Box
+  doc.setFillColor(236, 253, 245);
+  doc.rect(offsetX + 4, finalY, 90, 6, 'F');
+  doc.setDrawColor(16, 185, 129);
   doc.setLineWidth(0.2);
-  doc.rect(10, finalY, 128, 8, 'S');
+  doc.rect(offsetX + 4, finalY, 90, 6, 'S');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('TOTAL BISYAROH BERSIH (TAKE HOME PAY):', 14, finalY + 5.5);
-  doc.text(formatCurrency(payroll.bisyarohBersih), 134, finalY + 5.5, { align: 'right' });
+  doc.setFontSize(6.5);
+  doc.setTextColor(6, 78, 59);
+  doc.text('TOTAL BISYAROH BERSIH:', offsetX + 6, finalY + 4);
+  doc.text(formatCurrency(payroll.bisyarohBersih), offsetX + 92, finalY + 4, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
 
   // Signatures
-  const sigY = finalY + 13;
+  const sigY = finalY + 8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-
-  doc.text(`Karangmenggah, ${displayHijriDate}`, 95, sigY);
-  doc.text('Penerima,', 15, sigY + 4);
-  doc.text('Bendahara Madrasah,', 95, sigY + 4);
+  doc.setFontSize(5.5);
+  doc.text('Penerima Bisyaroh,', offsetX + 8, sigY);
+  doc.text(`Karangmenggah, ${displayHijriDate}`, offsetX + 54, sigY);
+  doc.text('Bendahara Madrasah,', offsetX + 54, sigY + 3);
 
   doc.setFont('helvetica', 'bold');
-  doc.text(payroll.teacherName, 15, sigY + 22);
-  doc.text(madrasah.treasurerName, 95, sigY + 22);
+  doc.text(payroll.teacherName, offsetX + 8, sigY + 12);
+  doc.text(madrasah.treasurerName, offsetX + 54, sigY + 12);
+}
 
-  doc.save(`Slip_Bisyaroh_${payroll.teacherName.replace(/[^a-zA-Z0-9]/g, '_')}_${payroll.monthHijri.replace(/\s+/g, '_')}.pdf`);
+export function generateSlipGajiPDF(
+  madrasah: MadrasahInfo,
+  payroll: PayrollRecord | PayrollRecord[]
+) {
+  const payrolls = Array.isArray(payroll) ? payroll : [payroll, payroll, payroll, payroll];
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const totalPages = Math.ceil(payrolls.length / 4);
+
+  for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+    if (pageIdx > 0) {
+      doc.addPage();
+    }
+
+    // Draw center cut lines (dashed)
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineDashPattern([2, 2], 0);
+    doc.setLineWidth(0.3);
+    doc.line(105, 5, 105, 292); // vertical line
+    doc.line(5, 148.5, 205, 148.5); // horizontal line
+    doc.setLineDashPattern([], 0); // reset dash
+
+    const quadrants = [
+      { x: 4, y: 4 },
+      { x: 106, y: 4 },
+      { x: 4, y: 150 },
+      { x: 106, y: 150 },
+    ];
+
+    for (let q = 0; q < 4; q++) {
+      const pIdx = pageIdx * 4 + q;
+      if (pIdx < payrolls.length) {
+        drawSingleSlipQuadrant(doc, madrasah, payrolls[pIdx], quadrants[q].x, quadrants[q].y);
+      }
+    }
+  }
+
+  const filename = Array.isArray(payroll)
+    ? `Slip_Bisyaroh_Batch_4PerA4.pdf`
+    : `Slip_Bisyaroh_${payroll[0].teacherName.replace(/[^a-zA-Z0-9]/g, '_')}_4PerA4.pdf`;
+
+  doc.save(filename);
 }
 
 export function generateCashFlowPDF(

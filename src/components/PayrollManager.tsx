@@ -26,8 +26,8 @@ interface PayrollManagerProps {
   onAddPayroll: (pay: Omit<PayrollRecord, 'id'>) => Promise<void>;
   onDeletePayroll?: (id: string) => Promise<void>;
   onDeleteAllPayrolls?: () => Promise<void>;
-  onSelectPayrollForModal: (pay: PayrollRecord) => void;
-  onDownloadPDF: (pay: PayrollRecord) => void;
+  onSelectPayrollForModal: (pay: PayrollRecord | PayrollRecord[]) => void;
+  onDownloadPDF: (pay: PayrollRecord | PayrollRecord[]) => void;
 }
 
 export const PayrollManager: React.FC<PayrollManagerProps> = ({
@@ -271,6 +271,19 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {filteredPayrolls.length > 0 && (
+              <button
+                id="btn-print-batch-payroll"
+                type="button"
+                onClick={() => onSelectPayrollForModal(filteredPayrolls)}
+                className="px-3.5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md text-xs transition flex items-center space-x-1.5"
+                title={`Cetak Seluruh Slip (${filteredPayrolls.length} Guru = ${Math.ceil(filteredPayrolls.length / 4)} Kertas A4)`}
+              >
+                <Printer className="w-4 h-4 text-emerald-300" />
+                <span>Cetak Batch ({filteredPayrolls.length} Guru / {Math.ceil(filteredPayrolls.length / 4)} A4)</span>
+              </button>
+            )}
+
             {onDeleteAllPayrolls && payrolls.length > 0 && (
               <button
                 id="btn-delete-all-payroll"

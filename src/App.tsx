@@ -80,7 +80,7 @@ export default function App() {
   // Modals & Synchronization States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNewTrxModalOpen, setIsNewTrxModalOpen] = useState(false);
-  const [selectedPayrollForModal, setSelectedPayrollForModal] = useState<PayrollRecord | null>(null);
+  const [selectedPayrollForModal, setSelectedPayrollForModal] = useState<PayrollRecord | PayrollRecord[] | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Fetch initial data from Express backend
@@ -1177,7 +1177,7 @@ export default function App() {
     generateInventoryPDF(activeMadrasahInfo, inventoryData, currentHijri.formatted);
   };
 
-  const handleExportSlipPDF = (payroll: PayrollRecord) => {
+  const handleExportSlipPDF = (payroll: PayrollRecord | PayrollRecord[]) => {
     generateSlipGajiPDF(activeMadrasahInfo, payroll);
   };
 
@@ -1366,10 +1366,11 @@ export default function App() {
       {selectedPayrollForModal && (
         <SlipGajiModal
           madrasah={{...madrasahInfo, tahunAjaranHijri: selectedYear}}
-          payroll={selectedPayrollForModal}
+          payroll={Array.isArray(selectedPayrollForModal) ? selectedPayrollForModal[0] : selectedPayrollForModal}
+          payrolls={Array.isArray(selectedPayrollForModal) ? selectedPayrollForModal : undefined}
           onClose={() => setSelectedPayrollForModal(null)}
           onDownloadPDF={handleExportSlipPDF}
-          onDeletePayroll={handleDeletePayroll}
+          onDeletePayroll={Array.isArray(selectedPayrollForModal) ? undefined : handleDeletePayroll}
           onGoHome={() => {
             setSelectedPayrollForModal(null);
             setActiveTab('dashboard');
