@@ -49,7 +49,10 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
 
-  const currentRunningYear = getCurrentHijriAcademicYear();
+  // Application Data States
+  const [madrasahInfo, setMadrasahInfo] = useState<MadrasahInfo>(initialMadrasahInfo);
+
+  const currentRunningYear = getCurrentHijriAcademicYear(madrasahInfo.hijriOffsetDays);
 
   // Academic Year State (RAPBM Tiap Tahun) - Defaults dynamically to current running year
   const [selectedYear, setSelectedYear] = useState<string>(currentRunningYear);
@@ -67,9 +70,6 @@ export default function App() {
     }
     return defaultYears;
   });
-
-  // Application Data States
-  const [madrasahInfo, setMadrasahInfo] = useState<MadrasahInfo>(initialMadrasahInfo);
   const [rapbmData, setRapbmData] = useState<RAPBMItem[]>(initialRAPBMData);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);

@@ -73,17 +73,27 @@ export function formatNumber(amount: number): string {
 }
 
 /**
- * Returns the active Hijri academic year based on current Gregorian / Hijri date.
- * E.g., for Safar 1448 H, returns "1448 - 1449 H."
+ * Returns the active Hijri academic year based on current Gregorian / Hijri date following Madrasah rules.
+ * - Month 1 (Muharram) to 9 (Ramadhan): (Year - 1) - (Year) H.
+ *   Example: Safar 1448 H => "1447 - 1448 H."
+ * - Month 10 (Syawal) to 12 (Dzulhijjah): (Year) - (Year + 1) H.
+ *   Example: Syawal 1448 H => "1448 - 1449 H."
  */
-export function getCurrentHijriAcademicYear(offsetDays: number = 0): string {
-  const hDate = getHijriDate(new Date(), offsetDays);
-  return `${hDate.year} - ${hDate.year + 1} H.`;
+export function getCurrentHijriAcademicYear(offsetDays: number = 0, dateInput?: Date | string): string {
+  const hDate = getHijriDate(dateInput || new Date(), offsetDays);
+  const hMonth = hDate.monthIndex + 1; // 1 (Muharram) to 12 (Dzulhijjah)
+  const hYear = hDate.year;
+
+  if (hMonth >= 1 && hMonth <= 9) {
+    return `${hYear - 1} - ${hYear} H.`;
+  } else {
+    return `${hYear} - ${hYear + 1} H.`;
+  }
 }
 
 /**
  * Formats a Hijri date string so that its Hijri year matches the active academic year.
- * E.g., if input is "19 Safar 1448 H" and academicYear is "1446 - 1447 H.", returns "19 Safar 1446 H".
+ * Syawal - Dzulhijjah use startYear, Muharram - Ramadhan use endYear.
  */
 export function formatHijriDateForAcademicYear(
   hijriDateInput?: string | Date | HijriDateObj,
@@ -95,8 +105,8 @@ export function formatHijriDateForAcademicYear(
   const startYear = matches && matches[0] ? matches[0] : '1446';
   const endYear = matches && matches[1] ? matches[1] : (parseInt(startYear) + 1).toString();
 
-  const isSecondHalf = monthHijri && ['Syawal', 'Syawwal', "Dz. Qo'dah", "Dzulqa'dah", "Dz. Hijjah", "Dzulhijjah"].includes(monthHijri);
-  const targetHijriYear = isSecondHalf ? endYear : startYear;
+  const isFirstPartSyawalToDzulhijjah = monthHijri && ['Syawal', 'Syawwal', "Dz. Qo'dah", "Dzulqa'dah", "Dz. Hijjah", "Dzulhijjah"].includes(monthHijri);
+  const targetHijriYear = isFirstPartSyawalToDzulhijjah ? startYear : endYear;
 
   if (!hijriDateInput) {
     const todayH = getHijriDate(new Date(), offsetDays);

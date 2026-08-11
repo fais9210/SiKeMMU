@@ -1,4 +1,5 @@
 import { MadrasahInfo, RAPBMItem, Teacher, Transaction, PayrollRecord } from '../types';
+import { getCurrentHijriAcademicYear } from '../utils/hijri';
 
 export const initialMadrasahInfo: MadrasahInfo = {
   namaMadrasah: 'Madrasah Miftahul Ulum A-22 Karangnongko',
@@ -7,7 +8,7 @@ export const initialMadrasahInfo: MadrasahInfo = {
   desaSampung: 'Karangmenggah',
   kecamatan: 'Wonorejo',
   kabupaten: 'Pasuruan',
-  tahunAjaranHijri: '1446 - 1447 H.',
+  tahunAjaranHijri: getCurrentHijriAcademicYear(),
   pengurusName: "ABDULLOH ASY'ARI",
   pengurusTitle: 'Pengurus Madrasah',
   headmasterName: "M. MAS'UD",
