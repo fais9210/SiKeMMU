@@ -43,11 +43,14 @@ import {
 } from './utils/pdfGenerator';
 import { AddYearModal } from './components/AddYearModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { QuickActionSheet } from './components/QuickActionSheet';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarCompact, setIsSidebarCompact] = useState(false);
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
+  const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
 
   // Application Data States
   const [madrasahInfo, setMadrasahInfo] = useState<MadrasahInfo>(initialMadrasahInfo);
@@ -132,10 +135,141 @@ export default function App() {
     }
   };
 
-
   useEffect(() => {
     fetchBackendData();
   }, []);
+
+  // --- Browser History & Mobile Back Button Management ---
+  const navigateToTab = (newTab: ActiveTab) => {
+    if (newTab === activeTab) return;
+    try {
+      window.history.pushState({ tab: newTab, modal: null }, '', window.location.pathname);
+    } catch {
+      // ignore
+    }
+    setActiveTab(newTab);
+  };
+
+  const handleOpenSettings = () => {
+    try {
+      window.history.pushState({ tab: activeTab, modal: 'settings' }, '', window.location.pathname);
+    } catch {}
+    setIsSettingsOpen(true);
+  };
+
+  const handleOpenAddYear = () => {
+    try {
+      window.history.pushState({ tab: activeTab, modal: 'addYear' }, '', window.location.pathname);
+    } catch {}
+    setIsAddYearModalOpen(true);
+  };
+
+  const handleOpenNewTrx = () => {
+    try {
+      window.history.pushState({ tab: activeTab, modal: 'newTrx' }, '', window.location.pathname);
+    } catch {}
+    setIsNewTrxModalOpen(true);
+  };
+
+  const handleOpenQuickAction = () => {
+    try {
+      window.history.pushState({ tab: activeTab, modal: 'quickAction' }, '', window.location.pathname);
+    } catch {}
+    setIsQuickActionOpen(true);
+  };
+
+  const handleOpenPayrollModal = (p: PayrollRecord | PayrollRecord[]) => {
+    try {
+      window.history.pushState({ tab: activeTab, modal: 'payrollModal' }, '', window.location.pathname);
+    } catch {}
+    setSelectedPayrollForModal(p);
+  };
+
+  // Explicit back navigation handler for mobile header and back events
+  const handleNavigateBack = () => {
+    // 1. Close any open modal or mobile drawer first
+    if (
+      isSettingsOpen ||
+      isAddYearModalOpen ||
+      selectedPayrollForModal ||
+      isNewTrxModalOpen ||
+      isQuickActionOpen ||
+      (isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 768)
+    ) {
+      setIsSettingsOpen(false);
+      setIsAddYearModalOpen(false);
+      setSelectedPayrollForModal(null);
+      setIsNewTrxModalOpen(false);
+      setIsQuickActionOpen(false);
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      }
+      return;
+    }
+
+    // 2. If on any tab other than dashboard, return to dashboard
+    if (activeTab !== 'dashboard') {
+      try {
+        if (typeof window !== 'undefined' && window.history.length > 1) {
+          window.history.back();
+        } else {
+          setActiveTab('dashboard');
+        }
+      } catch {
+        setActiveTab('dashboard');
+      }
+    }
+  };
+
+  // Listen to popstate event (Hardware Back Button / Browser Back Arrow)
+  useEffect(() => {
+    try {
+      if (!window.history.state || !window.history.state.tab) {
+        window.history.replaceState({ tab: activeTab, modal: null }, '', window.location.pathname);
+      }
+    } catch {}
+
+    const handlePopState = (event: PopStateEvent) => {
+      // 1. Close any open modal / drawer
+      if (
+        isSettingsOpen ||
+        isAddYearModalOpen ||
+        selectedPayrollForModal ||
+        isNewTrxModalOpen ||
+        isQuickActionOpen ||
+        (isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 768)
+      ) {
+        setIsSettingsOpen(false);
+        setIsAddYearModalOpen(false);
+        setSelectedPayrollForModal(null);
+        setIsNewTrxModalOpen(false);
+        setIsQuickActionOpen(false);
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+          setIsSidebarOpen(false);
+        }
+        return;
+      }
+
+      // 2. Switch tab based on event state or go to dashboard
+      const stateTab = event.state?.tab as ActiveTab | undefined;
+      if (stateTab) {
+        setActiveTab(stateTab);
+      } else {
+        setActiveTab('dashboard');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [
+    isSettingsOpen,
+    isAddYearModalOpen,
+    selectedPayrollForModal,
+    isNewTrxModalOpen,
+    isQuickActionOpen,
+    isSidebarOpen,
+    activeTab,
+  ]);
 
   // Sync RAPBM Bisyaroh Guru, Bisyaroh TU, Syahriyah, IMDA, IMNI, dan transaksi Buku Kas Real-time untuk tahun yang aktif
   useEffect(() => {
@@ -1181,6 +1315,17 @@ export default function App() {
     generateSlipGajiPDF(activeMadrasahInfo, payroll);
   };
 
+  // Dynamic Badge Counts for Navigation
+  const unpaidTeachersCount = payrolls.filter(
+    (p) =>
+      (p.tahunAjaran === selectedYear || (!p.tahunAjaran && selectedYear === '1446 - 1447 H.')) &&
+      p.status === 'TERTUNDA'
+  ).length;
+
+  const currentYearTransactionsCount = transactions.filter(
+    (t) => t.tahunAjaran === selectedYear || (!t.tahunAjaran && selectedYear === '1446 - 1447 H.')
+  ).length;
+
   return (
     <div id="app-root-container" className="min-h-screen bg-slate-100 font-sans text-slate-800 flex flex-col">
       
@@ -1190,16 +1335,18 @@ export default function App() {
         selectedYear={selectedYear}
         availableYears={availableYears}
         onSelectYear={handleSelectYear}
-        onAddNewYear={() => setIsAddYearModalOpen(true)}
+        onAddNewYear={() => handleOpenAddYear()}
         totalIncome={totalIncome}
         totalExpense={totalExpense}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={handleOpenSettings}
         onExportRAPBMPDF={handleExportRAPBMPDF}
         onExportCashflowPDF={handleExportCashflowPDF}
         isSyncing={isSyncing}
         onRefreshData={fetchBackendData}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        activeTab={activeTab}
+        onNavigateBack={handleNavigateBack}
       />
 
       <AddYearModal
@@ -1213,10 +1360,17 @@ export default function App() {
         {/* Navigation Sidebar */}
         <Sidebar
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          unpaidTeachersCount={0}
+          setActiveTab={navigateToTab}
+          unpaidTeachersCount={unpaidTeachersCount}
+          teachersCount={teachers.length}
+          studentsCount={students.length}
+          transactionsCount={currentYearTransactionsCount}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
+          isCompact={isSidebarCompact}
+          onToggleCompact={() => setIsSidebarCompact(!isSidebarCompact)}
+          onOpenQuickAction={handleOpenQuickAction}
+          onOpenSettings={handleOpenSettings}
         />
 
         {/* Main Content Area */}
@@ -1230,10 +1384,10 @@ export default function App() {
               rapbmData={currentYearRapbm}
               transactions={transactions}
               payrolls={currentYearPayrolls}
-              onNavigateTab={(tab) => setActiveTab(tab)}
+              onNavigateTab={(tab) => navigateToTab(tab)}
               onOpenNewTransaction={() => {
-                setActiveTab('cashbook');
-                setIsNewTrxModalOpen(true);
+                navigateToTab('cashbook');
+                handleOpenNewTrx();
               }}
               onGeneratePayrollPDF={handleExportSlipPDF}
             />
@@ -1245,7 +1399,7 @@ export default function App() {
               selectedYear={selectedYear}
               availableYears={availableYears}
               onSelectYear={handleSelectYear}
-              onAddNewYear={() => setIsAddYearModalOpen(true)}
+              onAddNewYear={() => handleOpenAddYear()}
               rapbmData={currentYearRapbm}
               onUpdateItem={handleUpdateRAPBMItem}
               onAddItem={handleAddRapbmItem}
@@ -1302,7 +1456,7 @@ export default function App() {
               onAddPayroll={handleAddPayroll}
               onDeletePayroll={handleDeletePayroll}
               onDeleteAllPayrolls={handleDeleteAllPayrolls}
-              onSelectPayrollForModal={(p) => setSelectedPayrollForModal(p)}
+              onSelectPayrollForModal={(p) => handleOpenPayrollModal(p)}
               onDownloadPDF={handleExportSlipPDF}
             />
           )}
@@ -1350,8 +1504,8 @@ export default function App() {
                   Buka modal pengaturan untuk memperbarui identitas KOP Madrasah, nama penandatangan, dan koreksi hilal Hijriyah.
                 </p>
                 <button
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="px-4 py-2 bg-emerald-700 text-white font-bold text-xs rounded-xl hover:bg-emerald-600 transition"
+                  onClick={handleOpenSettings}
+                  className="px-4 py-2 bg-emerald-700 text-white font-bold text-xs rounded-xl hover:bg-emerald-600 transition shadow-sm"
                 >
                   Buka Form Pengaturan Madrasah
                 </button>
@@ -1373,7 +1527,7 @@ export default function App() {
           onDeletePayroll={Array.isArray(selectedPayrollForModal) ? undefined : handleDeletePayroll}
           onGoHome={() => {
             setSelectedPayrollForModal(null);
-            setActiveTab('dashboard');
+            navigateToTab('dashboard');
           }}
         />
       )}
@@ -1389,11 +1543,35 @@ export default function App() {
         />
       )}
 
+      {/* Quick Action Bottom Sheet */}
+      <QuickActionSheet
+        isOpen={isQuickActionOpen}
+        onClose={() => setIsQuickActionOpen(false)}
+        onNavigateTab={navigateToTab}
+        onOpenNewTransaction={() => {
+          navigateToTab('cashbook');
+          handleOpenNewTrx();
+        }}
+        onOpenSettings={handleOpenSettings}
+        onExportRAPBMPDF={handleExportRAPBMPDF}
+        onExportCashflowPDF={handleExportCashflowPDF}
+        selectedYear={selectedYear}
+      />
+
       {/* Sticky Mobile Bottom Navigation Bar */}
       <MobileBottomNav
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenMore={() => setIsSidebarOpen(true)}
+        setActiveTab={navigateToTab}
+        onOpenQuickAction={handleOpenQuickAction}
+        unpaidTeachersCount={unpaidTeachersCount}
+        teachersCount={teachers.length}
+        studentsCount={students.length}
+        transactionsCount={currentYearTransactionsCount}
+        onOpenSettings={handleOpenSettings}
+        onOpenNewTransaction={() => {
+          navigateToTab('cashbook');
+          handleOpenNewTrx();
+        }}
       />
 
     </div>
