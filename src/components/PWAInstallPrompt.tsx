@@ -182,16 +182,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss, o
       {!isStandalone && isBannerVisible && (
         <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-b border-emerald-500/30 px-3 sm:px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 z-40">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-emerald-900/80 border border-emerald-500/40 p-1 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
-              <img
-                src="https://images.seeklogo.com/logo-png/32/1/lambang-ponpes-sidogiri-logo-png_seeklogo-327444.png"
-                alt="Logo Sidogiri"
-                className="w-full h-full object-contain"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/logo-sidogiri.png';
-                }}
-              />
+            <div className="w-8 h-8 rounded-lg bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
+              <Smartphone className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
@@ -235,18 +227,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss, o
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 max-w-sm w-full rounded-2xl p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-900/80 border border-emerald-500/40 p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
-                  <img
-                    src="https://images.seeklogo.com/logo-png/32/1/lambang-ponpes-sidogiri-logo-png_seeklogo-327444.png"
-                    alt="Logo Sidogiri"
-                    className="w-full h-full object-contain"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = '/logo-sidogiri.png';
-                    }}
-                  />
-                </div>
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-emerald-400" />
                 <h3 className="font-bold text-white text-base">Install di iPhone / iPad</h3>
               </div>
               <button

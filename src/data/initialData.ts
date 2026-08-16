@@ -16,7 +16,6 @@ export const initialMadrasahInfo: MadrasahInfo = {
   treasurerName: 'M. YUNUS',
   treasurerTitle: 'Bendahara Madrasah',
   hijriOffsetDays: 0,
-  logoUrl: 'https://images.seeklogo.com/logo-png/32/1/lambang-ponpes-sidogiri-logo-png_seeklogo-327444.png',
 };
 
 export const baseRAPBMSkeleton = [
