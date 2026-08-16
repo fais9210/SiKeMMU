@@ -733,24 +733,42 @@ export default function App() {
   // Year Selection & Addition Handlers
   const handleSelectYear = (year: string) => {
     setSelectedYear(year);
-    setRapbmData((prev) => {
-      const updated = alignRapbmDataToSkeleton(prev, [...availableYears, year]);
-      // Seed missing items to backend if necessary
-      const yearItems = updated.filter((i) => i.tahunAjaran === year);
-      apiFetch('/api/rapbm/seed-year', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: yearItems }),
-      }).catch(console.error);
-      return updated;
-    });
   };
 
-  const handleAddNewYear = (newYear: string) => {
+  const handleAddNewYear = async (newYear: string) => {
     if (!availableYears.includes(newYear)) {
       setAvailableYears((prev) => [...prev, newYear]);
     }
-    handleSelectYear(newYear);
+
+    // Copy all established items from current selected year (including all custom added items) into the new year
+    const sourceItems = rapbmData.filter((i) => i.tahunAjaran === selectedYear || (!i.tahunAjaran && selectedYear === '1446 - 1447 H.'));
+    const sourceList = sourceItems.length > 0 ? sourceItems : rapbmData.filter((i) => i.tahunAjaran === '1446 - 1447 H.');
+
+    const existingNewYearItems = rapbmData.filter((i) => i.tahunAjaran === newYear);
+    if (existingNewYearItems.length === 0 && sourceList.length > 0) {
+      const newYearItems: RAPBMItem[] = sourceList.map((item, idx) => ({
+        id: `rapbm-${newYear.replace(/[^a-zA-Z0-9]/g, '')}-${item.type.toLowerCase()}-${(item.noKode || '').replace(/\./g, '_')}-${idx}-${Date.now()}`,
+        tahunAjaran: newYear,
+        type: item.type,
+        categoryCode: item.categoryCode,
+        categoryName: item.categoryName,
+        noUrut: item.noUrut,
+        noKode: item.noKode,
+        uraian: item.uraian,
+        jumlahAnggaran: item.jumlahAnggaran || 0,
+        realita: 0,
+        persentase: 0,
+      }));
+
+      setRapbmData((prev) => [...prev, ...newYearItems]);
+      apiFetch('/api/rapbm/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: newYearItems }),
+      }).catch(console.error);
+    }
+
+    setSelectedYear(newYear);
   };
 
   // Total Calculations (matching RAPBM table totals exactly)
@@ -849,20 +867,61 @@ export default function App() {
   };
 
   const handleAddRapbmItem = async (newItemData: Omit<RAPBMItem, 'id'>) => {
+    const itemYear = newItemData.tahunAjaran || selectedYear;
+    const baseTimestamp = Date.now();
     const createdItem: RAPBMItem = {
-      id: `rapbm-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `rapbm-${baseTimestamp}-${Math.floor(Math.random() * 1000)}`,
       ...newItemData,
+      tahunAjaran: itemYear,
     };
-    setRapbmData((prev) => [...prev, createdItem]);
+
+    // Otomatis tetapkan item ini untuk semua tahun ajaran berikutnya yang terdaftar
+    const futureItems: RAPBMItem[] = [];
+    const currentIndex = availableYears.indexOf(itemYear);
+    const subsequentYears = currentIndex !== -1
+      ? availableYears.slice(currentIndex + 1)
+      : availableYears.filter((y) => y > itemYear);
+
+    subsequentYears.forEach((futYear, idx) => {
+      const existsInFuture = rapbmData.some(
+        (i) =>
+          i.tahunAjaran === futYear &&
+          ((newItemData.noKode && i.noKode === newItemData.noKode) ||
+           (i.uraian && newItemData.uraian && i.uraian.toLowerCase().trim() === newItemData.uraian.toLowerCase().trim() && i.type === newItemData.type))
+      );
+
+      if (!existsInFuture) {
+        futureItems.push({
+          ...newItemData,
+          id: `rapbm-fut-${baseTimestamp}-${idx}-${Math.floor(Math.random() * 1000)}`,
+          tahunAjaran: futYear,
+          jumlahAnggaran: newItemData.jumlahAnggaran || 0,
+          realita: 0,
+          persentase: 0,
+        });
+      }
+    });
+
+    const allNewItems = [createdItem, ...futureItems];
+    setRapbmData((prev) => [...prev, ...allNewItems]);
 
     try {
-      await apiFetch('/api/rapbm', {
+      await apiFetch('/api/rapbm/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createdItem),
+        body: JSON.stringify({ items: allNewItems }),
       });
     } catch (e) {
-      console.error('Error adding RAPBM item:', e);
+      console.error('Error adding RAPBM items in batch:', e);
+      try {
+        await apiFetch('/api/rapbm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(createdItem),
+        });
+      } catch (err) {
+        console.error('Error in single fallback add:', err);
+      }
     }
 
     // Jika item RAPBM baru ditambahkan dengan realita/pencatatan nominal > 0, otomatis buat transaksi kas
@@ -872,7 +931,7 @@ export default function App() {
       const autoTrx: Omit<Transaction, 'id'> = {
         dateGregorian: new Date().toISOString().split('T')[0],
         dateHijri: hijriObj.formatted,
-        tahunAjaran: newItemData.tahunAjaran || madrasahInfo.activeYear,
+        tahunAjaran: itemYear,
         type: isIncome ? 'IN' : 'OUT',
         category: newItemData.categoryName || (isIncome ? 'PENERIMAAN' : 'PENGELUARAN'),
         description: `Transaksi Baru RAPBM [Kode ${newItemData.noKode}]: ${newItemData.uraian}`,

@@ -153,6 +153,41 @@ async function startServer() {
     }
   });
 
+  app.post('/api/rapbm/batch', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { items } = req.body;
+      if (Array.isArray(items) && items.length > 0) {
+        for (const i of items) {
+          if (!i || !i.id) continue;
+          const cleanItem = {
+            id: String(i.id),
+            tahunAjaran: String(i.tahunAjaran || '1446 - 1447 H.'),
+            type: String(i.type || 'PENERIMAAN'),
+            categoryCode: String(i.categoryCode || ''),
+            categoryName: String(i.categoryName || ''),
+            noUrut: String(i.noUrut || ''),
+            noKode: String(i.noKode || ''),
+            uraian: String(i.uraian || ''),
+            jumlahAnggaran: Math.round(Number(i.jumlahAnggaran) || 0),
+            realita: Math.round(Number(i.realita) || 0),
+            persentase: Math.round(Number(i.persentase) || 0),
+          };
+
+          const existing = await db.select().from(rapbmItems).where(eq(rapbmItems.id, cleanItem.id));
+          if (existing.length > 0) {
+            await db.update(rapbmItems).set(cleanItem).where(eq(rapbmItems.id, cleanItem.id));
+          } else {
+            await db.insert(rapbmItems).values(cleanItem);
+          }
+        }
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error in batch rapbm update:', error);
+      res.status(500).json({ error: 'Failed to batch update rapbm' });
+    }
+  });
+
   app.delete('/api/rapbm/:id', requireAuth, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;

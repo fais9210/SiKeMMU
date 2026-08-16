@@ -94,7 +94,10 @@ export function getDefaultRAPBMForYear(tahunAjaran: string): RAPBMItem[] {
 }
 
 export function alignRapbmDataToSkeleton(items: RAPBMItem[], years: string[]): RAPBMItem[] {
-  if (!items) items = [];
+  if (!items || items.length === 0) {
+    items = initialRAPBMData;
+  }
+
   const allYearsToProcess = Array.from(new Set([
     ...years,
     ...items.map(i => i.tahunAjaran).filter(Boolean) as string[],
@@ -102,62 +105,95 @@ export function alignRapbmDataToSkeleton(items: RAPBMItem[], years: string[]): R
   ]));
 
   let result: RAPBMItem[] = [];
-  const usedIds = new Set<string>();
+  const processedIds = new Set<string>();
+
+  // Identify years that currently have items defined
+  const populatedYears = allYearsToProcess.filter(yr =>
+    items.some(i => i.tahunAjaran === yr || (!i.tahunAjaran && yr === '1446 - 1447 H.'))
+  );
 
   allYearsToProcess.forEach(yr => {
     const yrItems = items.filter(i => i.tahunAjaran === yr || (!i.tahunAjaran && yr === '1446 - 1447 H.'));
-    
-    // Generate standard skeleton items for this year
-    const stdItems = baseRAPBMSkeleton.map((sk, idx) => {
-      const isIncome = sk.type === 'PENERIMAAN';
-      
-      // Try to find matching item from yrItems that hasn't been claimed yet
-      let found = yrItems.find(i => !usedIds.has(i.id) && i.type === sk.type && i.noKode === sk.noKode);
 
-      if (!found) {
-        // Fallback search by uraian
-        found = yrItems.find(i => !usedIds.has(i.id) && i.type === sk.type && i.uraian && (
-          i.uraian.toLowerCase().trim() === sk.uraian.toLowerCase().trim() ||
-          (sk.uraian.includes('Bisyaroh Guru') && i.uraian.includes('Bisyaroh Guru')) ||
-          (sk.uraian.includes('Iuran Haflatul') && i.uraian.includes('Iuran'))
-        ));
+    if (yrItems.length > 0) {
+      // Retain ALL existing items for this academic year (preserves custom items and respects deleted items)
+      yrItems.forEach((it, idx) => {
+        let finalId = it.id || `rapbm-${yr.replace(/[^a-zA-Z0-9]/g, '')}-${(it.type || 'PENERIMAAN').toLowerCase()}-${(it.noKode || '').replace(/\./g, '_')}-${idx}`;
+        if (processedIds.has(finalId)) {
+          finalId = `${finalId}-${idx}`;
+        }
+        processedIds.add(finalId);
+
+        const anggaran = Number(it.jumlahAnggaran) || 0;
+        const realita = Number(it.realita) || 0;
+        const persentase = it.persentase !== undefined ? it.persentase : (anggaran > 0 ? Math.round((realita / anggaran) * 100) : 100);
+
+        result.push({
+          ...it,
+          id: finalId,
+          tahunAjaran: yr,
+          type: it.type || 'PENERIMAAN',
+          categoryCode: it.categoryCode || '',
+          categoryName: it.categoryName || (it.type === 'PENERIMAAN' ? 'PENDAPATAN' : 'PENGELUARAN'),
+          noUrut: it.noUrut || 'I',
+          noKode: it.noKode || '',
+          uraian: it.uraian || '',
+          jumlahAnggaran: anggaran,
+          realita: realita,
+          persentase: persentase,
+        });
+      });
+    } else {
+      // Academic year has no items yet - generate from template year (carrying over all custom items) or default skeleton
+      let templateItems: Array<Omit<RAPBMItem, 'id' | 'tahunAjaran'>> = [];
+
+      if (populatedYears.length > 0) {
+        const sourceYear = populatedYears[0];
+        const sourceItems = items.filter(i => i.tahunAjaran === sourceYear || (!i.tahunAjaran && sourceYear === '1446 - 1447 H.'));
+        templateItems = sourceItems.map(si => ({
+          type: si.type,
+          categoryCode: si.categoryCode,
+          categoryName: si.categoryName,
+          noUrut: si.noUrut,
+          noKode: si.noKode,
+          uraian: si.uraian,
+          jumlahAnggaran: si.jumlahAnggaran || 0,
+          realita: 0,
+          persentase: 0,
+        }));
+      } else {
+        templateItems = baseRAPBMSkeleton.map(sk => ({
+          type: sk.type as 'PENERIMAAN' | 'PENGELUARAN',
+          categoryCode: sk.categoryCode,
+          categoryName: sk.categoryName,
+          noUrut: sk.noUrut,
+          noKode: sk.noKode,
+          uraian: sk.uraian,
+          jumlahAnggaran: sk.jumlahAnggaran || 0,
+          realita: 0,
+          persentase: 0,
+        }));
       }
 
-      // Legacy code migrations
-      if (!found && sk.type === 'PENGELUARAN' && sk.noKode === '1.2' && sk.uraian === 'Bisyaroh TU') {
-        found = yrItems.find(i => !usedIds.has(i.id) && i.type === 'PENGELUARAN' && i.noKode === '1.3' && i.uraian === 'Bisyaroh TU');
-      }
-      if (!found && sk.type === 'PENGELUARAN' && sk.noKode === '1.3' && sk.uraian.includes('Subsidi')) {
-        found = yrItems.find(i => !usedIds.has(i.id) && i.type === 'PENGELUARAN' && i.noKode === '1.4' && i.uraian.includes('Subsidi'));
-      }
-
-      let anggaran = found ? found.jumlahAnggaran : 0;
-      let realita = found ? found.realita : 0;
-
-      const yrClean = yr.replace(/[^a-zA-Z0-9]/g, '');
-      let finalId = found ? found.id : `rapbm-${yrClean}-${sk.type.toLowerCase()}-${sk.noKode.replace(/\./g, '_')}`;
-
-      if (usedIds.has(finalId)) {
-        finalId = `rapbm-${yrClean}-${sk.type.toLowerCase()}-${sk.noKode.replace(/\./g, '_')}-${idx}`;
-      }
-      usedIds.add(finalId);
-
-      return {
-        id: finalId,
-        tahunAjaran: yr,
-        type: sk.type as 'PENERIMAAN' | 'PENGELUARAN',
-        categoryCode: sk.categoryCode,
-        categoryName: sk.categoryName,
-        noUrut: sk.noUrut,
-        noKode: sk.noKode,
-        uraian: sk.uraian,
-        jumlahAnggaran: anggaran,
-        realita: isIncome ? (anggaran > 0 ? anggaran : realita) : realita,
-        persentase: anggaran > 0 ? Math.round((realita / anggaran) * 100) : 0,
-      };
-    });
-
-    result = [...result, ...stdItems];
+      templateItems.forEach((tmpl, idx) => {
+        const yrClean = yr.replace(/[^a-zA-Z0-9]/g, '');
+        const finalId = `rapbm-${yrClean}-${tmpl.type.toLowerCase()}-${(tmpl.noKode || '').replace(/\./g, '_')}-${idx}`;
+        processedIds.add(finalId);
+        result.push({
+          id: finalId,
+          tahunAjaran: yr,
+          type: tmpl.type as 'PENERIMAAN' | 'PENGELUARAN',
+          categoryCode: tmpl.categoryCode,
+          categoryName: tmpl.categoryName,
+          noUrut: tmpl.noUrut,
+          noKode: tmpl.noKode,
+          uraian: tmpl.uraian,
+          jumlahAnggaran: tmpl.jumlahAnggaran,
+          realita: 0,
+          persentase: 0,
+        });
+      });
+    }
   });
 
   return result;
