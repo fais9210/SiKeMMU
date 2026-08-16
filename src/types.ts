@@ -131,3 +131,32 @@ export interface StudentPayment {
   notes?: string;
 }
 
+export interface TeacherAttendance {
+  id: string;
+  tahunAjaran: string; // e.g. "1446 - 1447 H."
+  teacherId: string;
+  teacherName: string;
+  nipNu?: string;
+  role?: string;
+  monthHijri: string; // e.g. "Syawal", "Dzulqo'dah", dll
+  monthGregorian?: string;
+  targetTatapMuka: number; // Target pertemuan / jam mengajar dalam sebulan
+  hadir: number; // Jumlah kehadiran / tatap muka aktual
+  izin: number; // Izin
+  sakit: number; // Sakit
+  alpa: number; // Tanpa keterangan
+  tarifPerTatapMuka: number; // Nominal per tatap muka
+  tunjanganJabatan: number;
+  tunjanganMasaKerja: number;
+  tunjanganKehadiran: number; // Bonus kehadiran penuh
+  potonganInfaq: number;
+  potonganTabungan: number;
+  potonganLain: number;
+  totalBisyarohKotor: number;
+  totalBisyarohBersih: number;
+  status: 'DRAFT' | 'DISETUJUI' | 'LUNAS';
+  notes?: string;
+  updatedAt?: string;
+}
+
+

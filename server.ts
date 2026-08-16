@@ -4,7 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import { getHijriDate } from './src/utils/hijri';
 import { requireAuth, AuthRequest } from './src/middleware/auth';
 import { db, initTables } from './src/db/db';
-import { settings, rapbmItems, transactions, teachers, payrollRecords, inventory, students, studentPayments } from './src/db/schema';
+import { settings, rapbmItems, transactions, teachers, payrollRecords, inventory, students, studentPayments, teacherAttendances } from './src/db/schema';
 import { eq, desc, inArray } from 'drizzle-orm';
 import { initialMadrasahInfo, initialRAPBMData, initialStudents } from './src/data/initialData';
 
@@ -449,6 +449,188 @@ async function startServer() {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: 'Failed to delete teacher' });
+    }
+  });
+
+  // 4.5 Teacher Attendances (Presensi & Tatap Muka Guru)
+  app.get('/api/teacher-attendances', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const data = await db.select().from(teacherAttendances).orderBy(desc(teacherAttendances.id));
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch teacher attendances' });
+    }
+  });
+
+  app.post('/api/teacher-attendances', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const b = req.body;
+      const targetTatapMuka = Number(b.targetTatapMuka) || 16;
+      const hadir = Number(b.hadir) || 0;
+      const izin = Number(b.izin) || 0;
+      const sakit = Number(b.sakit) || 0;
+      const alpa = Number(b.alpa) || 0;
+      const tarifPerTatapMuka = Number(b.tarifPerTatapMuka) || 25000;
+      const tunjanganJabatan = Number(b.tunjanganJabatan) || 0;
+      const tunjanganMasaKerja = Number(b.tunjanganMasaKerja) || 0;
+      const tunjanganKehadiran = Number(b.tunjanganKehadiran) || 0;
+      const potonganInfaq = Number(b.potonganInfaq) || 0;
+      const potonganTabungan = Number(b.potonganTabungan) || 0;
+      const potonganLain = Number(b.potonganLain) || 0;
+
+      const bisyarohMengajar = hadir * tarifPerTatapMuka;
+      const totalBisyarohKotor = bisyarohMengajar + tunjanganJabatan + tunjanganMasaKerja + tunjanganKehadiran;
+      const totalPotongan = potonganInfaq + potonganTabungan + potonganLain;
+      const totalBisyarohBersih = Math.max(0, totalBisyarohKotor - totalPotongan);
+
+      const newAtt = {
+        id: b.id || `att-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+        tahunAjaran: b.tahunAjaran || '1446 - 1447 H.',
+        teacherId: b.teacherId,
+        teacherName: b.teacherName,
+        nipNu: b.nipNu || '',
+        role: b.role || 'Guru Kelas',
+        monthHijri: b.monthHijri || 'Syawal',
+        monthGregorian: b.monthGregorian || '',
+        targetTatapMuka,
+        hadir,
+        izin,
+        sakit,
+        alpa,
+        tarifPerTatapMuka,
+        tunjanganJabatan,
+        tunjanganMasaKerja,
+        tunjanganKehadiran,
+        potonganInfaq,
+        potonganTabungan,
+        potonganLain,
+        totalBisyarohKotor,
+        totalBisyarohBersih,
+        status: b.status || 'DRAFT',
+        notes: b.notes || '',
+        updatedAt: new Date().toISOString(),
+      };
+
+      const existing = await db
+        .select()
+        .from(teacherAttendances)
+        .where(eq(teacherAttendances.id, newAtt.id));
+
+      if (existing.length > 0) {
+        const updated = await db
+          .update(teacherAttendances)
+          .set(newAtt)
+          .where(eq(teacherAttendances.id, newAtt.id))
+          .returning();
+        return res.json(updated[0]);
+      }
+
+      const inserted = await db.insert(teacherAttendances).values(newAtt).returning();
+      res.status(201).json(inserted[0]);
+    } catch (error) {
+      console.error('Error adding teacher attendance:', error);
+      res.status(500).json({ error: 'Failed to save teacher attendance' });
+    }
+  });
+
+  app.post('/api/teacher-attendances/batch', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { items } = req.body;
+      if (Array.isArray(items) && items.length > 0) {
+        for (const b of items) {
+          if (!b || !b.teacherId) continue;
+          const targetTatapMuka = Number(b.targetTatapMuka) || 16;
+          const hadir = Number(b.hadir) || 0;
+          const izin = Number(b.izin) || 0;
+          const sakit = Number(b.sakit) || 0;
+          const alpa = Number(b.alpa) || 0;
+          const tarifPerTatapMuka = Number(b.tarifPerTatapMuka) || 25000;
+          const tunjanganJabatan = Number(b.tunjanganJabatan) || 0;
+          const tunjanganMasaKerja = Number(b.tunjanganMasaKerja) || 0;
+          const tunjanganKehadiran = Number(b.tunjanganKehadiran) || 0;
+          const potonganInfaq = Number(b.potonganInfaq) || 0;
+          const potonganTabungan = Number(b.potonganTabungan) || 0;
+          const potonganLain = Number(b.potonganLain) || 0;
+
+          const bisyarohMengajar = hadir * tarifPerTatapMuka;
+          const totalBisyarohKotor = bisyarohMengajar + tunjanganJabatan + tunjanganMasaKerja + tunjanganKehadiran;
+          const totalPotongan = potonganInfaq + potonganTabungan + potonganLain;
+          const totalBisyarohBersih = Math.max(0, totalBisyarohKotor - totalPotongan);
+
+          const attItem = {
+            id: b.id || `att-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+            tahunAjaran: b.tahunAjaran || '1446 - 1447 H.',
+            teacherId: b.teacherId,
+            teacherName: b.teacherName,
+            nipNu: b.nipNu || '',
+            role: b.role || 'Guru Kelas',
+            monthHijri: b.monthHijri || 'Syawal',
+            monthGregorian: b.monthGregorian || '',
+            targetTatapMuka,
+            hadir,
+            izin,
+            sakit,
+            alpa,
+            tarifPerTatapMuka,
+            tunjanganJabatan,
+            tunjanganMasaKerja,
+            tunjanganKehadiran,
+            potonganInfaq,
+            potonganTabungan,
+            potonganLain,
+            totalBisyarohKotor,
+            totalBisyarohBersih,
+            status: b.status || 'DRAFT',
+            notes: b.notes || '',
+            updatedAt: new Date().toISOString(),
+          };
+
+          const existing = await db
+            .select()
+            .from(teacherAttendances)
+            .where(eq(teacherAttendances.id, attItem.id));
+
+          if (existing.length > 0) {
+            await db.update(teacherAttendances).set(attItem).where(eq(teacherAttendances.id, attItem.id));
+          } else {
+            await db.insert(teacherAttendances).values(attItem);
+          }
+        }
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error saving batch attendances:', error);
+      res.status(500).json({ error: 'Failed to batch save attendances' });
+    }
+  });
+
+  app.put('/api/teacher-attendances/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const b = req.body;
+      const updated = await db
+        .update(teacherAttendances)
+        .set({
+          ...b,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(teacherAttendances.id, id as string))
+        .returning();
+
+      if (updated.length > 0) return res.json(updated[0]);
+      res.status(404).json({ error: 'Data presensi tidak ditemukan' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update attendance' });
+    }
+  });
+
+  app.delete('/api/teacher-attendances/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await db.delete(teacherAttendances).where(eq(teacherAttendances.id, id as string));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete attendance' });
     }
   });
 

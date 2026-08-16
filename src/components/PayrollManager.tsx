@@ -12,6 +12,7 @@ import {
   Zap,
   Trash2,
   Filter,
+  CalendarCheck,
 } from 'lucide-react';
 import { MadrasahInfo, PayrollRecord, Teacher } from '../types';
 import { formatCurrency, getHijriDate, formatHijriDateForAcademicYear } from '../utils/hijri';
@@ -28,6 +29,7 @@ interface PayrollManagerProps {
   onDeleteAllPayrolls?: () => Promise<void>;
   onSelectPayrollForModal: (pay: PayrollRecord | PayrollRecord[]) => void;
   onDownloadPDF: (pay: PayrollRecord | PayrollRecord[]) => void;
+  onNavigateToAttendance?: () => void;
 }
 
 export const PayrollManager: React.FC<PayrollManagerProps> = ({
@@ -42,6 +44,7 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
   onDeleteAllPayrolls,
   onSelectPayrollForModal,
   onDownloadPDF,
+  onNavigateToAttendance,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilterYear, setSelectedFilterYear] = useState(selectedYear);
@@ -271,6 +274,19 @@ export const PayrollManager: React.FC<PayrollManagerProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {onNavigateToAttendance && (
+              <button
+                id="btn-goto-presensi"
+                type="button"
+                onClick={onNavigateToAttendance}
+                className="px-3.5 py-2.5 bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-600 hover:to-emerald-600 text-white font-bold rounded-xl shadow-md text-xs transition flex items-center space-x-1.5"
+                title="Buka Rekap Presensi & Hitung Bisyaroh Otomatis"
+              >
+                <CalendarCheck className="w-4 h-4 text-emerald-300" />
+                <span>Presensi & Tatap Muka</span>
+              </button>
+            )}
+
             {filteredPayrolls.length > 0 && (
               <button
                 id="btn-print-batch-payroll"

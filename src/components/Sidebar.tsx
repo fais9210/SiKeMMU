@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   GraduationCap,
+  CalendarCheck,
 } from 'lucide-react';
 
 export type ActiveTab =
@@ -27,6 +28,7 @@ export type ActiveTab =
   | 'syahriah'
   | 'cashbook'
   | 'payroll'
+  | 'presensi'
   | 'reports'
   | 'teachers'
   | 'inventory'
@@ -114,6 +116,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             color: 'text-teal-400',
             badge: unpaidTeachersCount > 0 ? `${unpaidTeachersCount} Belum` : undefined,
             badgeVariant: 'warning',
+          },
+          {
+            id: 'presensi' as ActiveTab,
+            label: 'Presensi & Kehadiran Guru',
+            description: 'Rekap Jam & Hitung Bisyaroh',
+            icon: CalendarCheck,
+            color: 'text-emerald-400',
+            badge: undefined,
           },
           {
             id: 'nota' as ActiveTab,

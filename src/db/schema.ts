@@ -123,3 +123,32 @@ export const studentPayments = pgTable('student_payments', {
   notes: text('notes'),
 });
 
+export const teacherAttendances = pgTable('teacher_attendances', {
+  id: text('id').primaryKey(),
+  tahunAjaran: text('tahun_ajaran').notNull(),
+  teacherId: text('teacher_id').notNull(),
+  teacherName: text('teacher_name').notNull(),
+  nipNu: text('nip_nu'),
+  role: text('role'),
+  monthHijri: text('month_hijri').notNull(),
+  monthGregorian: text('month_gregorian'),
+  targetTatapMuka: integer('target_tatap_muka').notNull().default(16),
+  hadir: integer('hadir').notNull().default(16),
+  izin: integer('izin').notNull().default(0),
+  sakit: integer('sakit').notNull().default(0),
+  alpa: integer('alpa').notNull().default(0),
+  tarifPerTatapMuka: integer('tarif_per_tatap_muka').notNull().default(25000),
+  tunjanganJabatan: integer('tunjangan_jabatan').notNull().default(0),
+  tunjanganMasaKerja: integer('tunjangan_masa_kerja').notNull().default(0),
+  tunjanganKehadiran: integer('tunjangan_kehadiran').notNull().default(0),
+  potonganInfaq: integer('potongan_infaq').notNull().default(0),
+  potonganTabungan: integer('potongan_tabungan').notNull().default(0),
+  potonganLain: integer('potongan_lain').notNull().default(0),
+  totalBisyarohKotor: integer('total_bisyaroh_kotor').notNull().default(0),
+  totalBisyarohBersih: integer('total_bisyaroh_bersih').notNull().default(0),
+  status: text('status').notNull().default('DRAFT'), // 'DRAFT' | 'DISETUJUI' | 'LUNAS'
+  notes: text('notes'),
+  updatedAt: text('updated_at'),
+});
+
+

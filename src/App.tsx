@@ -13,6 +13,8 @@ import { InventoryManager } from './components/InventoryManager';
 import { SyahriahManager } from './components/SyahriahManager';
 import { NotaReceiptManager } from './components/NotaReceiptManager';
 import { SettingsModal } from './components/SettingsModal';
+import { TeacherAttendanceManager } from './components/TeacherAttendanceManager';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 
 import {
   MadrasahInfo,
@@ -22,6 +24,7 @@ import {
   Transaction,
   Student,
   StudentPayment,
+  TeacherAttendance,
 } from './types';
 import {
   initialMadrasahInfo,
@@ -79,6 +82,7 @@ export default function App() {
   const [payrolls, setPayrolls] = useState<PayrollRecord[]>(initialPayrolls);
   const [students, setStudents] = useState<Student[]>(initialStudents as Student[]);
   const [studentPayments, setStudentPayments] = useState<StudentPayment[]>([]);
+  const [teacherAttendances, setTeacherAttendances] = useState<TeacherAttendance[]>([]);
 
   // Modals & Synchronization States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -90,7 +94,7 @@ export default function App() {
   const fetchBackendData = async () => {
     setIsSyncing(true);
     try {
-      const [resSettings, resRapbm, resTrx, resTeachers, resPayroll, resStudents, resStudentPay] = await Promise.all([
+      const [resSettings, resRapbm, resTrx, resTeachers, resPayroll, resStudents, resStudentPay, resAttendances] = await Promise.all([
         apiFetch('/api/settings').catch(() => null),
         apiFetch('/api/rapbm').catch(() => null),
         apiFetch('/api/transactions').catch(() => null),
@@ -98,6 +102,7 @@ export default function App() {
         apiFetch('/api/payroll').catch(() => null),
         apiFetch('/api/students').catch(() => null),
         apiFetch('/api/student-payments').catch(() => null),
+        apiFetch('/api/teacher-attendances').catch(() => null),
       ]);
 
       const parseJsonSafe = async (res: Response | null) => {
@@ -116,6 +121,7 @@ export default function App() {
       const payrollData = await parseJsonSafe(resPayroll);
       const studentsData = await parseJsonSafe(resStudents);
       const studentPayData = await parseJsonSafe(resStudentPay);
+      const attendancesData = await parseJsonSafe(resAttendances);
 
       if (settingsData) setMadrasahInfo(settingsData);
       if (rapbmDataRes && Array.isArray(rapbmDataRes)) {
@@ -128,6 +134,7 @@ export default function App() {
       if (payrollData) setPayrolls(payrollData);
       if (studentsData) setStudents(studentsData);
       if (studentPayData) setStudentPayments(studentPayData);
+      if (attendancesData && Array.isArray(attendancesData)) setTeacherAttendances(attendancesData);
     } catch (e) {
       console.warn('Backend server offline, using local initial state', e);
     } finally {
@@ -1238,6 +1245,167 @@ export default function App() {
     }
   };
 
+  // Teacher Attendance & Auto-Payroll Handlers
+  const handleSaveTeacherAttendances = async (items: TeacherAttendance[]) => {
+    // Update local state
+    setTeacherAttendances((prev) => {
+      const nextMap = new Map(prev.map((a) => [a.id, a]));
+      items.forEach((item) => nextMap.set(item.id, item));
+      return Array.from(nextMap.values());
+    });
+
+    try {
+      await apiFetch('/api/teacher-attendances/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+    } catch (e) {
+      console.error('Failed to save teacher attendances:', e);
+    }
+  };
+
+  const handleGeneratePayrollFromAttendance = async (
+    monthHijri: string,
+    targetYear: string,
+    attendancesToProcess: TeacherAttendance[]
+  ) => {
+    const today = new Date();
+    const gregorianStr = today.toISOString().split('T')[0];
+    const rawHijri = getHijriDate(today, madrasahInfo.hijriOffsetDays);
+    const formattedHijri = formatHijriDateForAcademicYear(rawHijri, targetYear, monthHijri, madrasahInfo.hijriOffsetDays);
+
+    const generatedPayrolls: PayrollRecord[] = [];
+    const generatedTrx: Transaction[] = [];
+
+    for (const att of attendancesToProcess) {
+      const teacher = teachers.find((t) => t.id === att.teacherId);
+      const isTU = (att.role || teacher?.role || '').toLowerCase().includes('tu') || (att.role || teacher?.role || '').toLowerCase().includes('tata usaha');
+      const rapbmCode = isTU ? '1.2' : '1.1';
+
+      const hadir = Number(att.hadir) || 0;
+      const tarif = Number(att.tarifPerTatapMuka) || Number(teacher?.tarifPerJam) || 25000;
+      const bisyarohPokok = hadir * tarif;
+      const tunjanganJabatan = Number(att.tunjanganJabatan) || 0;
+      const tunjanganMasaKerja = Number(att.tunjanganMasaKerja) || 0;
+      const tunjanganKehadiran = Number(att.tunjanganKehadiran) || 0;
+      const totalGajiKotor = bisyarohPokok + tunjanganJabatan + tunjanganMasaKerja + tunjanganKehadiran;
+
+      const potInfaq = Number(att.potonganInfaq) || 0;
+      const potTabungan = Number(att.potonganTabungan) || 0;
+      const potLain = Number(att.potonganLain) || 0;
+      const totalPotongan = potInfaq + potTabungan + potLain;
+      const bisyarohBersih = Math.max(0, totalGajiKotor - totalPotongan);
+
+      const totalTunjangan = tunjanganJabatan + tunjanganMasaKerja + tunjanganKehadiran;
+
+      const payRecord: PayrollRecord = {
+        id: `pay-att-${targetYear.replace(/[^a-zA-Z0-9]/g, '')}-${monthHijri.replace(/[^a-zA-Z0-9]/g, '')}-${att.teacherId}`,
+        tahunAjaran: targetYear,
+        teacherId: att.teacherId,
+        teacherName: att.teacherName,
+        nipNu: att.nipNu || teacher?.nipNu || '',
+        role: att.role || teacher?.role || 'Pengajar',
+        monthHijri,
+        monthGregorian: gregorianStr,
+        dateGeneratedGregorian: gregorianStr,
+        dateGeneratedHijri: formattedHijri,
+        jamMengajar: hadir, // Menggunakan kehadiran aktual tatap muka
+        bisyarohPokok,
+        tunjanganGuru: totalTunjangan,
+        tunjanganLain: 0,
+        totalGajiKotor,
+        potonganInfaq: potInfaq,
+        potonganTabungan: potTabungan,
+        potonganLain: potLain,
+        totalPotongan,
+        bisyarohBersih,
+        status: 'LUNAS',
+        notes: `Kalkulasi presensi tatap muka: ${hadir} jam/pertemuan (${monthHijri})`,
+      };
+
+      generatedPayrolls.push(payRecord);
+
+      const newTrx: Transaction = {
+        id: `trx-${payRecord.id}`,
+        tahunAjaran: targetYear,
+        dateGregorian: gregorianStr,
+        dateHijri: formattedHijri,
+        type: 'OUT',
+        rapbmCode,
+        category: 'BISYAROH DAN TUNJANGAN',
+        description: isTU
+          ? `Bisyaroh Staf TU ${payRecord.teacherName} (${monthHijri}) - Presensi: ${hadir} TM`
+          : `Bisyaroh Ustadz/ah ${payRecord.teacherName} (${monthHijri}) - Presensi: ${hadir} TM`,
+        amount: bisyarohBersih,
+        recordedBy: madrasahInfo.treasurerName,
+        receiptNumber: `PAY-${payRecord.id}`,
+      };
+
+      generatedTrx.push(newTrx);
+    }
+
+    // Update payrolls state (replace existing for same month or prepend)
+    setPayrolls((prev) => {
+      const generatedIds = new Set(generatedPayrolls.map((p) => p.id));
+      const filtered = prev.filter((p) => !generatedIds.has(p.id));
+      return [...generatedPayrolls, ...filtered];
+    });
+
+    // Update transactions state
+    setTransactions((prev) => {
+      const receiptNos = new Set(generatedPayrolls.map((p) => `PAY-${p.id}`));
+      const filtered = prev.filter((t) => !receiptNos.has(t.receiptNumber || ''));
+      return [...generatedTrx, ...filtered];
+    });
+
+    // Update RAPBM Realization
+    const totalGuruBersih = generatedPayrolls
+      .filter((p) => !p.role.toLowerCase().includes('tu') && !p.role.toLowerCase().includes('tata usaha'))
+      .reduce((sum, p) => sum + p.bisyarohBersih, 0);
+
+    const totalTUBersih = generatedPayrolls
+      .filter((p) => p.role.toLowerCase().includes('tu') || p.role.toLowerCase().includes('tata usaha'))
+      .reduce((sum, p) => sum + p.bisyarohBersih, 0);
+
+    setRapbmData((prev) =>
+      prev.map((item) => {
+        if (item.tahunAjaran === targetYear || (!item.tahunAjaran && targetYear === '1446 - 1447 H.')) {
+          if (item.noKode === '1.1') {
+            const updatedRealita = item.realita + totalGuruBersih;
+            const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
+            return { ...item, realita: updatedRealita, persentase };
+          }
+          if (item.noKode === '1.2') {
+            const updatedRealita = item.realita + totalTUBersih;
+            const persentase = item.jumlahAnggaran > 0 ? Math.round((updatedRealita / item.jumlahAnggaran) * 100) : 100;
+            return { ...item, realita: updatedRealita, persentase };
+          }
+        }
+        return item;
+      })
+    );
+
+    // Save attendance batch and payrolls to backend
+    try {
+      await apiFetch('/api/teacher-attendances/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: attendancesToProcess }),
+      });
+
+      for (const pay of generatedPayrolls) {
+        await apiFetch('/api/payroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pay),
+        });
+      }
+    } catch (e) {
+      console.error('Error generating payroll batch:', e);
+    }
+  };
+
   // Student & Payment Handlers
   const handleAddStudent = async (studentData: Omit<Student, 'id'> & { id?: string }) => {
     try {
@@ -1388,6 +1556,9 @@ export default function App() {
   return (
     <div id="app-root-container" className="min-h-screen bg-slate-100 font-sans text-slate-800 flex flex-col">
       
+      {/* PWA Mobile App Install Prompt & Offline Notification */}
+      <PWAInstallPrompt />
+
       {/* Top Navbar */}
       <Navbar
         madrasah={activeMadrasahInfo}
@@ -1517,6 +1688,21 @@ export default function App() {
               onDeleteAllPayrolls={handleDeleteAllPayrolls}
               onSelectPayrollForModal={(p) => handleOpenPayrollModal(p)}
               onDownloadPDF={handleExportSlipPDF}
+              onNavigateToAttendance={() => navigateToTab('presensi')}
+            />
+          )}
+
+          {activeTab === 'presensi' && (
+            <TeacherAttendanceManager
+              madrasah={activeMadrasahInfo}
+              selectedYear={selectedYear}
+              availableYears={availableYears}
+              onSelectYear={handleSelectYear}
+              teachers={teachers}
+              attendances={teacherAttendances}
+              onSaveAttendances={handleSaveTeacherAttendances}
+              onGeneratePayrollFromAttendance={handleGeneratePayrollFromAttendance}
+              onNavigateToPayroll={() => navigateToTab('payroll')}
             />
           )}
 

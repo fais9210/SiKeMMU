@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+    <linearGradient id="goldGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="emeraldGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad512)"/>
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#059669" stroke-width="4" stroke-dasharray="12 8" opacity="0.4"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#fbbf24" stroke-width="2" opacity="0.3"/>
+  <path d="M 256 120 C 275 160 330 200 330 270 L 182 270 C 182 200 237 160 256 120 Z" fill="url(#emeraldGrad512)" opacity="0.95"/>
+  <path d="M 256 95 L 256 120 M 256 90 A 10 10 0 1 0 256 110 A 8 8 0 1 1 256 94" fill="#fbbf24" stroke="#fbbf24" stroke-width="2"/>
+  <rect x="156" y="270" width="200" height="130" rx="16" fill="#0f172a" stroke="url(#goldGrad512)" stroke-width="6"/>
+  <line x1="186" y1="305" x2="326" y2="305" stroke="#34d399" stroke-width="4" stroke-linecap="round"/>
+  <line x1="186" y1="335" x2="280" y2="335" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+  <line x1="186" y1="365" x2="310" y2="365" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="346" cy="360" r="40" fill="url(#goldGrad512)" stroke="#ffffff" stroke-width="3"/>
+  <text x="346" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" fill="#022c22" text-anchor="middle">Rp</text>
+</svg>

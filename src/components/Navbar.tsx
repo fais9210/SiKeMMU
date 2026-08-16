@@ -40,6 +40,7 @@ const tabLabels: Record<ActiveTab, string> = {
   syahriah: 'Pembayaran Syahriah',
   cashbook: 'Buku Kas Real-time',
   payroll: 'Slip Gaji Bisyaroh',
+  presensi: 'Presensi & Tatap Muka',
   nota: 'Cetak Nota RAPBM',
   teachers: 'Master Ustadz & Staf',
   inventory: 'Inventaris Madrasah',

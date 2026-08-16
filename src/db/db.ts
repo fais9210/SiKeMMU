@@ -180,6 +180,33 @@ export async function initTables() {
         notes TEXT
       );
 
+      CREATE TABLE IF NOT EXISTS teacher_attendances (
+        id TEXT PRIMARY KEY,
+        tahun_ajaran TEXT NOT NULL,
+        teacher_id TEXT NOT NULL,
+        teacher_name TEXT NOT NULL,
+        nip_nu TEXT,
+        role TEXT,
+        month_hijri TEXT NOT NULL,
+        month_gregorian TEXT,
+        target_tatap_muka INTEGER NOT NULL DEFAULT 16,
+        hadir INTEGER NOT NULL DEFAULT 16,
+        izin INTEGER NOT NULL DEFAULT 0,
+        sakit INTEGER NOT NULL DEFAULT 0,
+        alpa INTEGER NOT NULL DEFAULT 0,
+        tarif_per_tatap_muka INTEGER NOT NULL DEFAULT 25000,
+        tunjangan_jabatan INTEGER NOT NULL DEFAULT 0,
+        tunjangan_masa_kerja INTEGER NOT NULL DEFAULT 0,
+        tunjangan_kehadiran INTEGER NOT NULL DEFAULT 0,
+        potongan_infaq INTEGER NOT NULL DEFAULT 0,
+        potongan_tabungan INTEGER NOT NULL DEFAULT 0,
+        potongan_lain INTEGER NOT NULL DEFAULT 0,
+        total_bisyaroh_kotor INTEGER NOT NULL DEFAULT 0,
+        total_bisyaroh_bersih INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'DRAFT',
+        notes TEXT,
+        updated_at TEXT
+      );
     `);
     console.log('PostgreSQL tables initialized successfully.');
   } catch (err) {

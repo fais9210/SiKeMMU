@@ -17,6 +17,7 @@ import {
   FileText,
   ChevronRight,
   GraduationCap,
+  CalendarCheck,
 } from 'lucide-react';
 import { ActiveTab } from './Sidebar';
 
@@ -119,6 +120,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       bgColor: 'bg-teal-950/60',
       badge: unpaidTeachersCount > 0 ? `${unpaidTeachersCount} Belum` : undefined,
       badgeWarn: unpaidTeachersCount > 0,
+    },
+    {
+      id: 'presensi' as ActiveTab,
+      label: 'Presensi & Kehadiran Guru',
+      category: 'Keuangan',
+      description: 'Rekap Jam & Hitung Bisyaroh',
+      icon: CalendarCheck,
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-950/60',
     },
     {
       id: 'nota' as ActiveTab,
