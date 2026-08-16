@@ -1,4 +1,4 @@
-const CACHE_NAME = 'madrasah-finance-v1';
+const CACHE_NAME = 'madrasah-finance-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const PRECACHE_ASSETS = [
   '/icon.svg',
   '/icon-192.svg',
   '/icon-512.svg',
+  '/logo-sidogiri.png',
 ];
 
 // Install event - precache core shell

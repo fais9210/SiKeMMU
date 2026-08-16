@@ -1,4 +1,5 @@
 import { apiFetch } from "./lib/api";
+import { getLocalCache, saveLocalCache, flushOfflineQueue } from "./lib/syncManager";
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar, ActiveTab } from './components/Sidebar';
@@ -55,8 +56,8 @@ export default function App() {
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
 
-  // Application Data States
-  const [madrasahInfo, setMadrasahInfo] = useState<MadrasahInfo>(initialMadrasahInfo);
+  // Application Data States (with local offline fallback)
+  const [madrasahInfo, setMadrasahInfo] = useState<MadrasahInfo>(() => getLocalCache('madrasahInfo', initialMadrasahInfo));
 
   const currentRunningYear = getCurrentHijriAcademicYear(madrasahInfo.hijriOffsetDays);
 
@@ -76,13 +77,23 @@ export default function App() {
     }
     return defaultYears;
   });
-  const [rapbmData, setRapbmData] = useState<RAPBMItem[]>(initialRAPBMData);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
-  const [payrolls, setPayrolls] = useState<PayrollRecord[]>(initialPayrolls);
-  const [students, setStudents] = useState<Student[]>(initialStudents as Student[]);
-  const [studentPayments, setStudentPayments] = useState<StudentPayment[]>([]);
-  const [teacherAttendances, setTeacherAttendances] = useState<TeacherAttendance[]>([]);
+  const [rapbmData, setRapbmData] = useState<RAPBMItem[]>(() => getLocalCache('rapbmData', initialRAPBMData));
+  const [transactions, setTransactions] = useState<Transaction[]>(() => getLocalCache('transactions', initialTransactions));
+  const [teachers, setTeachers] = useState<Teacher[]>(() => getLocalCache('teachers', initialTeachers));
+  const [payrolls, setPayrolls] = useState<PayrollRecord[]>(() => getLocalCache('payrolls', initialPayrolls));
+  const [students, setStudents] = useState<Student[]>(() => getLocalCache('students', initialStudents as Student[]));
+  const [studentPayments, setStudentPayments] = useState<StudentPayment[]>(() => getLocalCache('studentPayments', []));
+  const [teacherAttendances, setTeacherAttendances] = useState<TeacherAttendance[]>(() => getLocalCache('teacherAttendances', []));
+
+  // Sync state to local cache whenever they change
+  useEffect(() => { saveLocalCache('madrasahInfo', madrasahInfo); }, [madrasahInfo]);
+  useEffect(() => { saveLocalCache('rapbmData', rapbmData); }, [rapbmData]);
+  useEffect(() => { saveLocalCache('transactions', transactions); }, [transactions]);
+  useEffect(() => { saveLocalCache('teachers', teachers); }, [teachers]);
+  useEffect(() => { saveLocalCache('payrolls', payrolls); }, [payrolls]);
+  useEffect(() => { saveLocalCache('students', students); }, [students]);
+  useEffect(() => { saveLocalCache('studentPayments', studentPayments); }, [studentPayments]);
+  useEffect(() => { saveLocalCache('teacherAttendances', teacherAttendances); }, [teacherAttendances]);
 
   // Modals & Synchronization States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -94,6 +105,11 @@ export default function App() {
   const fetchBackendData = async () => {
     setIsSyncing(true);
     try {
+      // First attempt to flush any pending offline mutations
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        await flushOfflineQueue();
+      }
+
       const [resSettings, resRapbm, resTrx, resTeachers, resPayroll, resStudents, resStudentPay, resAttendances] = await Promise.all([
         apiFetch('/api/settings').catch(() => null),
         apiFetch('/api/rapbm').catch(() => null),
@@ -129,18 +145,19 @@ export default function App() {
       } else {
         setRapbmData(alignRapbmDataToSkeleton(initialRAPBMData, ['1446 - 1447 H.', '1447 - 1448 H.']));
       }
-      if (trxData) setTransactions(trxData);
-      if (teachersData) setTeachers(teachersData);
-      if (payrollData) setPayrolls(payrollData);
-      if (studentsData) setStudents(studentsData);
-      if (studentPayData) setStudentPayments(studentPayData);
+      if (trxData && Array.isArray(trxData)) setTransactions(trxData);
+      if (teachersData && Array.isArray(teachersData)) setTeachers(teachersData);
+      if (payrollData && Array.isArray(payrollData)) setPayrolls(payrollData);
+      if (studentsData && Array.isArray(studentsData)) setStudents(studentsData);
+      if (studentPayData && Array.isArray(studentPayData)) setStudentPayments(studentPayData);
       if (attendancesData && Array.isArray(attendancesData)) setTeacherAttendances(attendancesData);
     } catch (e) {
-      console.warn('Backend server offline, using local initial state', e);
+      console.warn('Backend server offline, using local cached state', e);
     } finally {
       setIsSyncing(false);
     }
   };
+
 
   useEffect(() => {
     fetchBackendData();
@@ -1557,7 +1574,7 @@ export default function App() {
     <div id="app-root-container" className="min-h-screen bg-slate-100 font-sans text-slate-800 flex flex-col">
       
       {/* PWA Mobile App Install Prompt & Offline Notification */}
-      <PWAInstallPrompt />
+      <PWAInstallPrompt onSyncCompleted={fetchBackendData} />
 
       {/* Top Navbar */}
       <Navbar

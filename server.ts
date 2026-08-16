@@ -23,6 +23,8 @@ async function startServer() {
     const existingSettings = await db.select().from(settings).where(eq(settings.id, 'app-settings'));
     if (existingSettings.length === 0) {
       await db.insert(settings).values({ id: 'app-settings', ...initialMadrasahInfo });
+    } else if (!existingSettings[0].logoUrl) {
+      await db.update(settings).set({ logoUrl: 'https://images.seeklogo.com/logo-png/32/1/lambang-ponpes-sidogiri-logo-png_seeklogo-327444.png' }).where(eq(settings.id, 'app-settings'));
     }
   } catch (e) {
     console.error('Error initializing settings:', e);

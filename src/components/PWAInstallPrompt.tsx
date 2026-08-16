@@ -10,7 +10,11 @@ import {
   Sparkles,
   ArrowDown,
   Monitor,
+  RefreshCw,
+  CloudUpload,
+  Check,
 } from 'lucide-react';
+import { subscribeQueueChanges, flushOfflineQueue } from '../lib/syncManager';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -19,15 +23,21 @@ interface BeforeInstallPromptEvent extends Event {
 
 interface PWAInstallPromptProps {
   onDismiss?: () => void;
+  onSyncCompleted?: () => void;
 }
 
-export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss }) => {
+export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss, onSyncCompleted }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(true);
   const [showIOSModal, setShowIOSModal] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  
+  // Offline sync queue state
+  const [pendingQueueCount, setPendingQueueCount] = useState(0);
+  const [isSyncingQueue, setIsSyncingQueue] = useState(false);
+  const [syncSuccessMessage, setSyncSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if running in standalone mode (already installed)
@@ -50,17 +60,41 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss })
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // Online / Offline Listeners
-    const handleOnline = () => setIsOffline(false);
+    const handleOnline = () => {
+      setIsOffline(false);
+      flushOfflineQueue(() => {
+        if (onSyncCompleted) onSyncCompleted();
+      });
+    };
     const handleOffline = () => setIsOffline(true);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // Subscribe to Sync Queue changes
+    const unsubscribeSync = subscribeQueueChanges((count, syncing, lastSuccess) => {
+      setPendingQueueCount(count);
+      setIsSyncingQueue(syncing);
+      if (lastSuccess && count === 0) {
+        setSyncSuccessMessage('Semua data perubahan offline berhasil disinkronkan ke server!');
+        setTimeout(() => setSyncSuccessMessage(null), 5000);
+        if (onSyncCompleted) onSyncCompleted();
+      }
+    });
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      unsubscribeSync();
     };
-  }, []);
+  }, [onSyncCompleted]);
+
+  const handleManualSync = async () => {
+    setIsSyncingQueue(true);
+    await flushOfflineQueue(() => {
+      if (onSyncCompleted) onSyncCompleted();
+    });
+  };
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
@@ -78,41 +112,96 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss })
     }
   };
 
-  if (isStandalone) {
-    return isOffline ? (
-      <div className="bg-amber-950/90 border-b border-amber-500/40 text-amber-200 px-4 py-2 text-xs flex items-center justify-center gap-2">
-        <WifiOff className="w-4 h-4 text-amber-400" />
-        <span>Mode Offline Aktif: Aplikasi tetap berjalan tanpa koneksi internet.</span>
-      </div>
-    ) : null;
-  }
-
   return (
     <>
-      {/* Offline Status Alert Banner if disconnected */}
+      {/* Offline Status & Pending Sync Alert Banner */}
       {isOffline && (
-        <div className="bg-amber-950/95 border-b border-amber-600/40 text-amber-200 px-4 py-2 text-xs flex items-center justify-center gap-2 z-50 sticky top-0 shadow-md">
-          <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>Mode Offline: Anda sedang tidak terhubung internet. Data lokal tersimpan secara aman.</span>
+        <div className="bg-amber-950/95 border-b border-amber-600/40 text-amber-200 px-3 sm:px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 z-50 sticky top-0 shadow-md">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Mode Offline:</strong> Tidak terhubung internet.
+              {pendingQueueCount > 0
+                ? ` ${pendingQueueCount} perubahan tersimpan lokal & akan otomatis disinkronkan saat online kembali.`
+                : ' Data lokal tersimpan aman di perangkat.'}
+            </span>
+          </div>
+          {pendingQueueCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold text-[10px] border border-amber-500/30">
+              {pendingQueueCount} antrean tersimpan
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Syncing in Progress Banner */}
+      {isSyncingQueue && !isOffline && (
+        <div className="bg-cyan-950/95 border-b border-cyan-500/40 text-cyan-200 px-4 py-2 text-xs flex items-center justify-between z-50 sticky top-0 shadow-md animate-pulse">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin shrink-0" />
+            <span>Menyinkronkan {pendingQueueCount} perubahan offline ke server database...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Success Notification Toast */}
+      {syncSuccessMessage && (
+        <div className="bg-emerald-950/95 border-b border-emerald-500/40 text-emerald-200 px-4 py-2 text-xs flex items-center justify-between z-50 sticky top-0 shadow-md">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="font-semibold">{syncSuccessMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSyncSuccessMessage(null)}
+            className="p-1 text-emerald-400 hover:text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Pending Sync Bar when back Online */}
+      {!isOffline && pendingQueueCount > 0 && !isSyncingQueue && (
+        <div className="bg-emerald-950/95 border-b border-emerald-500/40 text-emerald-200 px-4 py-2 text-xs flex items-center justify-between z-50 sticky top-0 shadow-md">
+          <div className="flex items-center gap-2">
+            <CloudUpload className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Koneksi kembali online! Ada {pendingQueueCount} data perubahan offline siap disinkronkan.</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleManualSync}
+            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition shadow"
+          >
+            Sinkronkan Sekarang
+          </button>
         </div>
       )}
 
       {/* Persistent / Dismissible Install Banner */}
-      {isBannerVisible && (
+      {!isStandalone && isBannerVisible && (
         <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-b border-emerald-500/30 px-3 sm:px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 z-40">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
-              <Smartphone className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-lg bg-emerald-900/80 border border-emerald-500/40 p-1 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
+              <img
+                src="https://images.seeklogo.com/logo-png/32/1/lambang-ponpes-sidogiri-logo-png_seeklogo-327444.png"
+                alt="Logo Sidogiri"
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logo-sidogiri.png';
+                }}
+              />
             </div>
             <div className="min-w-0">
               <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
                 Install Aplikasi ke HP (PWA)
                 <span className="hidden sm:inline-block px-1.5 py-0.2 rounded bg-emerald-500/20 text-[10px] text-emerald-300 font-normal">
-                  Bisa Offline
+                  Auto-Sync Offline
                 </span>
               </p>
               <p className="text-[11px] text-slate-300 truncate">
-                Akses cepat dari layar utama seperti aplikasi Android tanpa repot ketik URL
+                Akses cepat dari layar utama HP & data otomatis tersinkronisasi saat online
               </p>
             </div>
           </div>
@@ -146,8 +235,18 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss })
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 max-w-sm w-full rounded-2xl p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-emerald-400" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-900/80 border border-emerald-500/40 p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                  <img
+                    src="https://images.seeklogo.com/logo-png/32/1/lambang-ponpes-sidogiri-logo-png_seeklogo-327444.png"
+                    alt="Logo Sidogiri"
+                    className="w-full h-full object-contain"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/logo-sidogiri.png';
+                    }}
+                  />
+                </div>
                 <h3 className="font-bold text-white text-base">Install di iPhone / iPad</h3>
               </div>
               <button
@@ -202,3 +301,4 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss })
     </>
   );
 };
+
